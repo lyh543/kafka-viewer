@@ -1,0 +1,76 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Disable Ant Design animations for snappy UI */
+.ant-motion-collapse,
+.ant-motion-collapse-legacy {
+  animation-duration: 0s !important;
+  transition-duration: 0s !important;
+}
+
+/* Compact scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Tree node compact styling */
+.sidebar-tree .ant-tree-treenode {
+  padding: 1px 0;
+}
+
+.sidebar-tree .ant-tree-title {
+  font-size: 13px;
+}
+
+/* Status bar styling */
+.status-bar {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  font-size: 12px;
+  border-top: 1px solid #d9d9d9;
+  background: #fafafa;
+  color: #666;
+  gap: 16px;
+}
+
+.status-bar-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+/* Tab compact styling */
+.content-tabs .ant-tabs-tab {
+  padding: 4px 12px !important;
+  font-size: 13px;
+}
+
+.content-tabs .ant-tabs-nav {
+  margin-bottom: 0;
+}
