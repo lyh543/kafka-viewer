@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Modal,
   List,
@@ -19,10 +19,18 @@ import {
   DeleteOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  LoadingOutlined,
 } from '@ant-design/icons';
+import { Descriptions } from 'antd';
+import { listen } from '@tauri-apps/api/event';
 import { useConnectionStore } from '../../stores/connection';
 import * as connectionApi from '../../api/connection';
-import type { KafkaConnection, AuthConfig } from '../../types/connection';
+import type {
+  KafkaConnection,
+  AuthConfig,
+  TestConnectionResult,
+  TestConnectionProgress,
+} from '../../types/connection';
 
 const { Text } = Typography;
 
@@ -48,12 +56,11 @@ export default function ConnectionModal({ open, onClose }: ConnectionModalProps)
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [form] = Form.useForm();
-  const [testResult, setTestResult] = useState<{
-    success: boolean;
-    message: string;
-  } | null>(null);
+  const [testResult, setTestResult] = useState<TestConnectionResult | null>(null);
   const [testing, setTesting] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [testStep, setTestStep] = useState<string | null>(null);
+  const testRequestIdRef = useRef(0);
 
   useEffect(() => {
     if (open) {
@@ -77,6 +84,43 @@ export default function ConnectionModal({ open, onClose }: ConnectionModalProps)
       }
     }
   }, [selectedId, connections, form]);
+
+  useEffect(() => {
+    if (!open) {
+      testRequestIdRef.current += 1;
+      setTesting(false);
+      setTestResult(null);
+      setTestStep(null);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    let disposed = false;
+    let unlisten: undefined | (() => void);
+
+    void listen<TestConnectionProgress>('connection-test-progress', (event) => {
+      const payload = event.payload;
+      if (!payload) return;
+      if (payload.request_id !== testRequestIdRef.current) return;
+      if (payload.connection_id !== selectedId) return;
+
+      setTestStep(payload.message);
+    }).then((cleanup) => {
+      if (disposed) {
+        cleanup();
+        return;
+      }
+
+      unlisten = cleanup;
+    });
+
+    return () => {
+      disposed = true;
+      if (unlisten) {
+        unlisten();
+      }
+    };
+  }, [selectedId]);
 
   const handleNew = () => {
     const newConn: KafkaConnection = {
@@ -117,6 +161,10 @@ export default function ConnectionModal({ open, onClose }: ConnectionModalProps)
 
   const handleDelete = () => {
     if (!selectedId) return;
+    testRequestIdRef.current += 1;
+    setTesting(false);
+    setTestResult(null);
+    setTestStep(null);
     removeConnection(selectedId);
     connectionApi.deleteConnection(selectedId).catch(console.error);
     setSelectedId(null);
@@ -144,16 +192,42 @@ export default function ConnectionModal({ open, onClose }: ConnectionModalProps)
 
   const handleTest = async () => {
     if (!selectedId) return;
+
+    if (testing) {
+      testRequestIdRef.current += 1;
+      setTesting(false);
+      setTestStep(null);
+      setTestResult({ success: false, message: '测试已取消' });
+      return;
+    }
+
+    const requestId = testRequestIdRef.current + 1;
+    testRequestIdRef.current = requestId;
     setTesting(true);
     setTestResult(null);
+    setTestStep('准备开始连接测试...');
+
     try {
       const conn = buildConnectionFromForm();
-      const result = await connectionApi.testConnection(conn);
+      const result = await connectionApi.testConnection(conn, requestId);
+
+      if (testRequestIdRef.current !== requestId) {
+        return;
+      }
+
       setTestResult(result);
+      setTestStep(null);
     } catch (e) {
+      if (testRequestIdRef.current !== requestId) {
+        return;
+      }
+
       setTestResult({ success: false, message: `${e}` });
+      setTestStep(null);
     } finally {
-      setTesting(false);
+      if (testRequestIdRef.current === requestId) {
+        setTesting(false);
+      }
     }
   };
 
@@ -179,13 +253,89 @@ export default function ConnectionModal({ open, onClose }: ConnectionModalProps)
 
   const authType = Form.useWatch('auth_type', form);
   const showCredentials = authType && authType !== 'none' && authType !== 'ssl';
+  const canSave = Boolean(selectedId) && dirty;
+
+  const testResultTag = testResult ? (
+    <Tooltip title={testResult.message}>
+      <Tag
+        icon={
+          testResult.success ? (
+            <CheckCircleOutlined />
+          ) : (
+            <CloseCircleOutlined />
+          )
+        }
+        color={testResult.success ? 'success' : 'error'}
+        style={{ maxWidth: 320, marginInlineEnd: 0 }}
+      >
+        <Text style={{ maxWidth: 260, display: 'inline-block' }} ellipsis>
+          {testResult.message}
+        </Text>
+      </Tag>
+    </Tooltip>
+  ) : null;
+
+  const testResultDetails = testResult?.success ? (
+    <Descriptions
+      size="small"
+      bordered
+      column={2}
+      style={{ marginBottom: 12 }}
+      items={[
+        {
+          key: 'ping-ms',
+          label: 'Ping',
+          children: testResult.ping_ms != null ? `${testResult.ping_ms} ms` : '-',
+        },
+        {
+          key: 'broker-count',
+          label: 'Broker 数',
+          children: testResult.broker_count ?? '-',
+        },
+        {
+          key: 'topic-count',
+          label: 'Topic 数',
+          children: testResult.topic_count ?? '-',
+        },
+        {
+          key: 'partition-count',
+          label: '分区总数',
+          children: testResult.partition_count ?? '-',
+        },
+        {
+          key: 'brokers',
+          label: 'Broker 节点',
+          span: 2,
+          children:
+            testResult.brokers && testResult.brokers.length > 0
+              ? testResult.brokers.map((broker) => `${broker.host}:${broker.port}`).join(', ')
+              : '-',
+        },
+      ]}
+    />
+  ) : null;
 
   return (
     <Modal
       title="管理连接"
       open={open}
       onCancel={onClose}
-      footer={null}
+      footer={[
+        <Button key="cancel" onClick={onClose}>
+          取消
+        </Button>,
+        <Button key="save" type="primary" onClick={handleSave} disabled={!canSave}>
+          保存
+        </Button>,
+        <Button
+          key="save-and-close"
+          type="primary"
+          onClick={handleSaveAndClose}
+          disabled={!canSave}
+        >
+          保存并关闭
+        </Button>,
+      ]}
       width={700}
       destroyOnClose
     >
@@ -278,37 +428,35 @@ export default function ConnectionModal({ open, onClose }: ConnectionModalProps)
                 </>
               )}
 
-              <Space style={{ marginBottom: 12 }}>
-                <Button onClick={handleTest} loading={testing}>
-                  测试连接
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  width: '100%',
+                  marginBottom: 12,
+                  minWidth: 0,
+                }}
+              >
+                <Button
+                  onClick={handleTest}
+                  icon={testing ? <LoadingOutlined spin /> : undefined}
+                  danger={testing}
+                >
+                  {testing ? '取消测试' : '测试连接'}
                 </Button>
-                {testResult && (
-                  <Tag
-                    icon={
-                      testResult.success ? (
-                        <CheckCircleOutlined />
-                      ) : (
-                        <CloseCircleOutlined />
-                      )
-                    }
-                    color={testResult.success ? 'success' : 'error'}
-                  >
-                    {testResult.message}
-                  </Tag>
-                )}
-              </Space>
+                <div style={{ flex: 1, minWidth: 0 }}>{testResultTag}</div>
+              </div>
+
+              {testing && testStep ? (
+                <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+                  当前步骤: {testStep}
+                </Text>
+              ) : null}
+
+              {testResultDetails}
 
               <Divider style={{ margin: '12px 0' }} />
-
-              <Space>
-                <Button onClick={onClose}>取消</Button>
-                <Button type="primary" onClick={handleSave} disabled={!dirty}>
-                  保存
-                </Button>
-                <Button type="primary" onClick={handleSaveAndClose} disabled={!dirty}>
-                  保存并关闭
-                </Button>
-              </Space>
             </Form>
           ) : (
             <div

@@ -20,5 +20,20 @@ export interface AuthConfig {
 export interface TestConnectionResult {
   success: boolean;
   message: string;
+  ping_ms?: number;
   broker_count?: number;
+  topic_count?: number;
+  partition_count?: number;
+  brokers?: Array<{
+    id: number;
+    host: string;
+    port: number;
+  }>;
+}
+
+export interface TestConnectionProgress {
+  request_id: number;
+  connection_id: string;
+  step: 'starting' | 'measuring_ping' | 'creating_consumer' | 'fetching_metadata' | 'processing_metadata' | 'completed' | 'failed';
+  message: string;
 }

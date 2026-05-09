@@ -13,6 +13,9 @@ export async function deleteConnection(id: string): Promise<void> {
   return invokeLogged('delete_connection', { id });
 }
 
-export async function testConnection(connection: KafkaConnection): Promise<TestConnectionResult> {
-  return invokeLogged('test_connection', { connection });
+export async function testConnection(
+  connection: KafkaConnection,
+  requestId: number
+): Promise<TestConnectionResult> {
+  return invokeLogged('test_connection', { connection, requestId });
 }
