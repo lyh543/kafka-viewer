@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invokeLogged } from '../utils/logger';
 
 export interface UpdateInfo {
   has_update: boolean;
@@ -13,9 +13,9 @@ export interface CacheStats {
 }
 
 export async function checkUpdate(): Promise<UpdateInfo> {
-  return invoke('check_update');
+  return invokeLogged('check_update');
 }
 
 export async function getCacheStats(): Promise<CacheStats> {
-  return invoke('get_cache_stats');
+  return invokeLogged('get_cache_stats');
 }

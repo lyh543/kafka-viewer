@@ -1,5 +1,5 @@
-import { useEffect, useCallback } from 'react';
-import { Tree, Button, Dropdown, message } from 'antd';
+import { useCallback, useState } from 'react';
+import { Tree, Button, Dropdown, Skeleton, message } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   DatabaseOutlined,
@@ -27,37 +27,75 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const setTopics = useConnectionStore((s) => s.setTopics);
   const setConsumerGroups = useConnectionStore((s) => s.setConsumerGroups);
   const { openTopicStatus, openConsumerGroupStatus } = useTabNavigation();
+  const [topicsLoading, setTopicsLoading] = useState<Record<string, boolean>>({});
+  const [consumerGroupsLoading, setConsumerGroupsLoading] = useState<Record<string, boolean>>({});
 
   const loadTopics = useCallback(
     async (connectionId: string) => {
+      if (topicsLoading[connectionId]) {
+        return;
+      }
+
+      setTopicsLoading((state) => ({ ...state, [connectionId]: true }));
+
       try {
         const topics = await topicApi.listTopics(connectionId);
         setTopics(connectionId, topics);
       } catch (e) {
         message.error(`加载主题列表失败: ${e}`);
+      } finally {
+        setTopicsLoading((state) => ({ ...state, [connectionId]: false }));
       }
     },
-    [setTopics]
+    [setTopics, topicsLoading]
   );
 
   const loadConsumerGroups = useCallback(
     async (connectionId: string) => {
+      if (consumerGroupsLoading[connectionId]) {
+        return;
+      }
+
+      setConsumerGroupsLoading((state) => ({ ...state, [connectionId]: true }));
+
       try {
         const groups = await consumerGroupApi.listConsumerGroups(connectionId);
         setConsumerGroups(connectionId, groups);
       } catch (e) {
         message.error(`加载消费者组列表失败: ${e}`);
+      } finally {
+        setConsumerGroupsLoading((state) => ({ ...state, [connectionId]: false }));
       }
     },
-    [setConsumerGroups]
+    [consumerGroupsLoading, setConsumerGroups]
   );
 
-  useEffect(() => {
-    connections.forEach((conn) => {
-      if (!topicsByConnection[conn.id]) loadTopics(conn.id);
-      if (!consumerGroupsByConnection[conn.id]) loadConsumerGroups(conn.id);
-    });
-  }, [connections, topicsByConnection, consumerGroupsByConnection, loadTopics, loadConsumerGroups]);
+  const handleExpand = useCallback(
+    (_expandedKeys: React.Key[], info: { node: { key: React.Key }; expanded: boolean }) => {
+      if (!info.expanded) {
+        return;
+      }
+
+      const parts = String(info.node.key).split('::');
+      const connectionId = parts[1];
+
+      if (!connectionId) {
+        return;
+      }
+
+      if (parts[2] === 'topics' && topicsByConnection[connectionId] === undefined) {
+        void loadTopics(connectionId);
+      }
+
+      if (
+        parts[2] === 'consumer-groups' &&
+        consumerGroupsByConnection[connectionId] === undefined
+      ) {
+        void loadConsumerGroups(connectionId);
+      }
+    },
+    [consumerGroupsByConnection, loadConsumerGroups, loadTopics, topicsByConnection]
+  );
 
   const buildTreeData = (): DataTreeNode[] => {
     return connections.map((conn) => ({
@@ -69,21 +107,38 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           key: `conn::${conn.id}::topics`,
           title: '主题',
           icon: <UnorderedListOutlined />,
-          children: (topicsByConnection[conn.id] || []).map((topic) => ({
-            key: `conn::${conn.id}::topic::${topic}`,
-            title: topic,
-            isLeaf: true,
-          })),
+          children: topicsLoading[conn.id] && topicsByConnection[conn.id] === undefined
+            ? [0, 1, 2].map((index) => ({
+                key: `conn::${conn.id}::topics::loading::${index}`,
+                title: <Skeleton.Input active size="small" style={{ width: 120 }} />,
+                isLeaf: true,
+                selectable: false,
+                disabled: true,
+              }))
+            : (topicsByConnection[conn.id] || []).map((topic) => ({
+                key: `conn::${conn.id}::topic::${topic}`,
+                title: topic,
+                isLeaf: true,
+              })),
         },
         {
           key: `conn::${conn.id}::consumer-groups`,
           title: '消费者组',
           icon: <TeamOutlined />,
-          children: (consumerGroupsByConnection[conn.id] || []).map((group) => ({
-            key: `conn::${conn.id}::consumer-group::${group}`,
-            title: group,
-            isLeaf: true,
-          })),
+          children:
+            consumerGroupsLoading[conn.id] && consumerGroupsByConnection[conn.id] === undefined
+              ? [0, 1, 2].map((index) => ({
+                  key: `conn::${conn.id}::consumer-groups::loading::${index}`,
+                  title: <Skeleton.Input active size="small" style={{ width: 140 }} />,
+                  isLeaf: true,
+                  selectable: false,
+                  disabled: true,
+                }))
+              : (consumerGroupsByConnection[conn.id] || []).map((group) => ({
+                  key: `conn::${conn.id}::consumer-group::${group}`,
+                  title: group,
+                  isLeaf: true,
+                })),
         },
       ],
     }));
@@ -183,6 +238,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             className="sidebar-tree"
             showIcon
             treeData={buildTreeData()}
+            onExpand={handleExpand}
             onDoubleClick={handleDoubleClick as never}
             titleRender={(node) => {
               const menuItems = getContextMenu(node.key as string);

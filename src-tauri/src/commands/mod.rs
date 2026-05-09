@@ -2,3 +2,5 @@ pub mod project;
 pub mod connection;
 pub mod topic;
 pub mod consumer_group;
+pub mod logging;
+pub mod runtime;

@@ -1,18 +1,18 @@
-import { invoke } from '@tauri-apps/api/core';
 import type { KafkaConnection, TestConnectionResult } from '../types/connection';
+import { invokeLogged } from '../utils/logger';
 
 export async function getConnections(): Promise<KafkaConnection[]> {
-  return invoke('get_connections');
+  return invokeLogged('get_connections');
 }
 
 export async function saveConnection(connection: KafkaConnection): Promise<KafkaConnection> {
-  return invoke('save_connection', { connection });
+  return invokeLogged('save_connection', { connection });
 }
 
 export async function deleteConnection(id: string): Promise<void> {
-  return invoke('delete_connection', { id });
+  return invokeLogged('delete_connection', { id });
 }
 
 export async function testConnection(connection: KafkaConnection): Promise<TestConnectionResult> {
-  return invoke('test_connection', { connection });
+  return invokeLogged('test_connection', { connection });
 }

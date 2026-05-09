@@ -10,6 +10,7 @@ use cache::message_cache::MessageCache;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    log::info!("Starting Kafka Viewer backend");
     let project_manager = ProjectManager::new().expect("Failed to initialize project manager");
     let kafka_client_manager = KafkaClientManager::new();
     let message_cache = MessageCache::new(200); // 200MB default
@@ -40,6 +41,8 @@ pub fn run() {
             // Consumer group commands
             commands::consumer_group::list_consumer_groups,
             commands::consumer_group::get_consumer_group_status,
+            // Logging commands
+            commands::logging::log_frontend,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

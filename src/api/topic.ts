@@ -1,12 +1,12 @@
-import { invoke } from '@tauri-apps/api/core';
 import type { TopicStatus, KafkaMessage, DataFilter, ProduceMessageRequest } from '../types/topic';
+import { invokeLogged } from '../utils/logger';
 
 export async function listTopics(connectionId: string): Promise<string[]> {
-  return invoke('list_topics', { connectionId });
+  return invokeLogged('list_topics', { connectionId });
 }
 
 export async function getTopicStatus(connectionId: string, topic: string): Promise<TopicStatus> {
-  return invoke('get_topic_status', { connectionId, topic });
+  return invokeLogged('get_topic_status', { connectionId, topic });
 }
 
 export async function createTopic(
@@ -15,11 +15,11 @@ export async function createTopic(
   partitions: number,
   replicationFactor: number
 ): Promise<void> {
-  return invoke('create_topic', { connectionId, name, partitions, replicationFactor });
+  return invokeLogged('create_topic', { connectionId, name, partitions, replicationFactor });
 }
 
 export async function deleteTopic(connectionId: string, topic: string): Promise<void> {
-  return invoke('delete_topic', { connectionId, topic });
+  return invokeLogged('delete_topic', { connectionId, topic });
 }
 
 export async function fetchMessages(
@@ -27,9 +27,9 @@ export async function fetchMessages(
   topic: string,
   filter: DataFilter
 ): Promise<KafkaMessage[]> {
-  return invoke('fetch_messages', { connectionId, topic, filter });
+  return invokeLogged('fetch_messages', { connectionId, topic, filter });
 }
 
 export async function produceMessage(request: ProduceMessageRequest): Promise<void> {
-  return invoke('produce_message', { request });
+  return invokeLogged('produce_message', { request });
 }

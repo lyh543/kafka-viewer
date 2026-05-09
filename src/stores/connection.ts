@@ -20,7 +20,24 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
   topicsByConnection: {},
   consumerGroupsByConnection: {},
 
-  setConnections: (connections) => set({ connections }),
+  setConnections: (connections) =>
+    set((state) => {
+      const validIds = new Set(connections.map((connection) => connection.id));
+
+      return {
+        connections,
+        topicsByConnection: Object.fromEntries(
+          Object.entries(state.topicsByConnection).filter(([connectionId]) =>
+            validIds.has(connectionId)
+          )
+        ),
+        consumerGroupsByConnection: Object.fromEntries(
+          Object.entries(state.consumerGroupsByConnection).filter(([connectionId]) =>
+            validIds.has(connectionId)
+          )
+        ),
+      };
+    }),
   addConnection: (connection) =>
     set((s) => ({ connections: [...s.connections, connection] })),
   updateConnection: (connection) =>
@@ -28,7 +45,16 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
       connections: s.connections.map((c) => (c.id === connection.id ? connection : c)),
     })),
   removeConnection: (id) =>
-    set((s) => ({ connections: s.connections.filter((c) => c.id !== id) })),
+    set((s) => {
+      const { [id]: _removedTopics, ...topicsByConnection } = s.topicsByConnection;
+      const { [id]: _removedGroups, ...consumerGroupsByConnection } = s.consumerGroupsByConnection;
+
+      return {
+        connections: s.connections.filter((c) => c.id !== id),
+        topicsByConnection,
+        consumerGroupsByConnection,
+      };
+    }),
   setTopics: (connectionId, topics) =>
     set((s) => ({ topicsByConnection: { ...s.topicsByConnection, [connectionId]: topics } })),
   setConsumerGroups: (connectionId, groups) =>
