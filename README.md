@@ -61,3 +61,33 @@ The script will:
 - create `*-huge-string-topic` and write 100000 messages in batches
 - create three consumer groups for full consumption, partial consumption, and idle/no-consumption scenarios
 - skip reseeding existing topics or consumer groups unless `--force` is provided
+
+## Testing
+
+### End-to-end tests
+
+E2E tests use [Playwright](https://playwright.dev/) and live in `e2e/`.
+
+```bash
+pnpm test:e2e
+```
+
+Interactive UI mode:
+
+```bash
+pnpm exec playwright test --ui
+```
+
+`playwright.config.ts` starts `pnpm web:dev` (http://localhost:1420) automatically
+and reuses an already running dev server outside CI.
+
+#### Browser
+
+By default the locally installed Google Chrome is used (`channel: 'chrome'`)
+because the bundled Chromium download is not always reachable. Override it with
+`PLAYWRIGHT_BROWSER_CHANNEL`, or use the bundled build:
+
+```bash
+pnpm exec playwright install chromium
+PLAYWRIGHT_BROWSER_CHANNEL= pnpm test:e2e
+```

@@ -7,8 +7,8 @@
     "dev": "tauri dev",
     "web:dev": "vite",
     "web:build": "tsc && vite build",
-    "web:preview": "vite preview",
     "mock:kafka": "tsx --tsconfig tsconfig.scripts.json scripts/mock-kafka.ts",
+    "test:e2e": "playwright test",
     "build": "tauri build",
     "tauri": "tauri"
   },
@@ -37,6 +37,7 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "^4.1.7",
     "@tauri-apps/cli": "^2",
     "@types/node": "^25.6.2",
