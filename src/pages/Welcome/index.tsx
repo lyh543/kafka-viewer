@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type MouseEvent } from 'react';
 import { FolderOpen, Plus, Trash2 } from 'lucide-react';
+import { homeDir } from '@tauri-apps/api/path';
 import { open } from '@tauri-apps/plugin-dialog';
 import { toast } from 'sonner';
 import * as projectApi from '@/api/project';
@@ -17,14 +18,30 @@ import { Input } from '@/components/ui/input';
 import { useProjectStore } from '@/stores/project';
 import type { RecentProject } from '@/types/project';
 
+const DEFAULT_PROJECT_NAME = 'my-project';
+const DEFAULT_PROJECT_PARENT = 'KafkaViewer/projects';
+
 type WelcomeProps = {
   onProjectOpened: () => void;
 };
 
+async function buildDefaultProjectPath(name: string): Promise<string> {
+  if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
+    try {
+      const home = await homeDir();
+      return `${home.replace(/[\\/]+$/, '')}/${DEFAULT_PROJECT_PARENT}/${name}`;
+    } catch {
+      // Fall back to the literal path below when the path API is unavailable.
+    }
+  }
+
+  return `~/${DEFAULT_PROJECT_PARENT}/${name}`;
+}
+
 export default function Welcome({ onProjectOpened }: WelcomeProps) {
   const { recentProjects, setRecentProjects, setCurrentProject } = useProjectStore();
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [formValues, setFormValues] = useState({ name: '', path: '' });
+  const [formValues, setFormValues] = useState({ name: DEFAULT_PROJECT_NAME, path: '' });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -36,6 +53,14 @@ export default function Welcome({ onProjectOpened }: WelcomeProps) {
   const canCreate = trimmedName.length > 0 && trimmedPath.length > 0 && !submitting;
 
   const versionLabel = useMemo(() => 'v0.1.0', []);
+
+  const openCreateModal = async () => {
+    setFormValues({
+      name: DEFAULT_PROJECT_NAME,
+      path: await buildDefaultProjectPath(DEFAULT_PROJECT_NAME),
+    });
+    setCreateModalOpen(true);
+  };
 
   const updateName = (name: string) => {
     setFormValues((current) => {
@@ -71,7 +96,7 @@ export default function Welcome({ onProjectOpened }: WelcomeProps) {
       const project = await projectApi.createProject(trimmedName, trimmedPath);
       setCurrentProject(project);
       setCreateModalOpen(false);
-      setFormValues({ name: '', path: '' });
+      setFormValues({ name: DEFAULT_PROJECT_NAME, path: '' });
       onProjectOpened();
     } catch (error) {
       toast.error(`创建项目失败: ${String(error)}`);
@@ -124,19 +149,19 @@ export default function Welcome({ onProjectOpened }: WelcomeProps) {
       return;
     }
 
-    const name = trimmedName || 'my-project';
+    const name = trimmedName || DEFAULT_PROJECT_NAME;
     setFormValues((current) => ({ ...current, path: `${selected}/${name}` }));
   };
 
   return (
-    <main className="flex h-full items-center justify-center bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-6 py-12">
-      <Card className="w-full max-w-5xl overflow-hidden">
-        <CardContent className="grid gap-0 p-0 md:grid-cols-[minmax(0,1.05fr)_380px]">
-          <section className="flex min-h-[520px] flex-col justify-between bg-white p-10 md:p-12">
+    <main className="flex h-full justify-center overflow-y-auto bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-4 py-8 sm:px-6 sm:py-12">
+      <Card className="my-auto w-full max-w-5xl overflow-hidden">
+        <CardContent className="grid gap-0 p-0 lg:grid-cols-[minmax(0,1fr)_minmax(300px,360px)]">
+          <section className="flex flex-col justify-between bg-white p-6 sm:p-10 lg:min-h-[520px] lg:p-12">
             <div className="space-y-8">
               <div className="space-y-3">
                 <p className="text-xs uppercase tracking-[0.28em] text-muted">Kafka Viewer</p>
-                <h1 className="max-w-xl text-[40px] font-normal leading-[1.1] tracking-tight text-foreground">
+                <h1 className="max-w-[22ch] text-[28px] font-normal leading-[1.15] tracking-tight text-balance text-foreground sm:text-4xl sm:leading-[1.1] lg:text-[40px]">
                   Pure workspace flow, rebuilt on a quieter visual system.
                 </h1>
                 <p className="max-w-xl text-sm leading-6 text-body">
@@ -148,7 +173,7 @@ export default function Welcome({ onProjectOpened }: WelcomeProps) {
               <div className="grid gap-4 sm:grid-cols-2">
                 <button
                   className="group rounded-[12px] bg-primary p-6 text-left text-primary-foreground"
-                  onClick={() => setCreateModalOpen(true)}
+                  onClick={() => void openCreateModal()}
                   type="button"
                 >
                   <div className="mb-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/10">
@@ -186,9 +211,9 @@ export default function Welcome({ onProjectOpened }: WelcomeProps) {
             </div>
           </section>
 
-          <section className="border-l border-border bg-signature-cream p-8 md:p-10">
+          <section className="border-t border-border bg-signature-cream p-6 sm:p-8 lg:border-l lg:border-t-0 lg:p-10">
             <CardHeader className="p-0">
-              <CardTitle className="text-2xl font-normal">最近的项目</CardTitle>
+              <CardTitle className="text-xl font-normal sm:text-2xl">最近的项目</CardTitle>
               <CardDescription className="max-w-sm leading-6 text-body">
                 最近打开过的工作区会出现在这里，便于快速回到上一次调试上下文。
               </CardDescription>
