@@ -10,6 +10,11 @@ the single seam that talks to Rust: `window.__TAURI_INTERNALS__.invoke`.
 
 The mock lives in `support/tauri-mock.ts` and records every `invoke` call, so a
 test can assert both on the rendered UI and on the exact IPC payloads.
+Connection commands are stateful: `save_connection` / `delete_connection` mutate
+an in-memory list returned by `get_connections`, so reopening the manager sees
+the same data the backend would return. `test_connection` returns a canned
+successful result (`success`, `ping_ms`, counts and broker nodes) that can be
+overridden per test.
 
 ## Commands
 

@@ -54,6 +54,11 @@ if (brokers.length === 0) {
 const topicSeeds = buildTopicSeeds(prefix);
 
 function parseCliOptions(): CliOptions {
+  // pnpm forwards the `--` separator to the script, which would otherwise make
+  // commander treat every following flag as a positional argument.
+  const argv = process.argv.filter(
+    (arg, index) => index < 2 || arg !== '--',
+  );
   const program = new Command();
 
   program
@@ -71,11 +76,11 @@ function parseCliOptions(): CliOptions {
     .option('--force', 'Force reseeding even when matching topics or consumer groups already exist')
     .showHelpAfterError('(run with --help to see available options)');
 
-  if (process.argv.length <= 2) {
+  if (argv.length <= 2) {
     program.help({ error: false });
   }
 
-  program.parse(process.argv);
+  program.parse(argv);
 
   const parsed = program.opts<CliOptions>();
   return {

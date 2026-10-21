@@ -29,17 +29,11 @@ docker run -d \
 ```
 
 ### Seed mock Kafka data
-Install the script dependencies first:
-
-```bash
-pnpm add kafkajs
-pnpm add -D tsx @types/node
-```
 
 Run the seeding script and pass the target broker explicitly:
 
 ```bash
-pnpm mock:kafka -- --broker=server:9002
+pnpm mock:kafka -- --broker=localhost:9092
 ```
 
 Or specify a different broker and topic prefix:
@@ -91,3 +85,25 @@ because the bundled Chromium download is not always reachable. Override it with
 pnpm exec playwright install chromium
 PLAYWRIGHT_BROWSER_CHANNEL= pnpm test:e2e
 ```
+
+#### Covered scenarios
+
+Project creation:
+
+- creating a project with the prefilled default name and path
+- renaming the project updates the derived path
+- an empty project name disables the create button
+- reopening the dialog after cancel restores the defaults
+
+Connection management:
+
+- a new connection can be saved right away with its default values, and only
+  reaches the backend when saving
+- cancelling a new, duplicated or edited connection leaves no trace in the list
+- saved connections survive closing and reopening the manager
+- testing a connection renders the metrics in a compact key/value layout and the
+  dialog stays inside the viewport
+- deleting a saved connection calls the backend and clears the list
+- clearing a required field disables the save button
+
+See `e2e/README.md` for details.
