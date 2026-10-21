@@ -21,15 +21,25 @@ export function useAutoRefresh(
   options: UseAutoRefreshOptions
 ) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const inFlightRef = useRef(false);
   const [loading, setLoading] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
   const doRefresh = useCallback(async () => {
+    // Skip ticks while a previous request is still running so slow/failing
+    // clusters do not accumulate overlapping consumers.
+    if (inFlightRef.current) {
+      return;
+    }
+
+    inFlightRef.current = true;
     setLoading(true);
+
     try {
       await fetchFn();
       setLastRefreshed(new Date());
     } finally {
+      inFlightRef.current = false;
       setLoading(false);
     }
   }, [fetchFn]);

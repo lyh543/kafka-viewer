@@ -93,6 +93,28 @@ export type TauriMockOptions = {
   recentProjects?: RecentProjectFixture[];
   connections?: ConnectionFixture[];
   testConnectionResult?: TestConnectionFixture;
+  /** Topics returned by `list_topics` for every connection. */
+  topics?: string[];
+  /** Consumer groups returned by `list_consumer_groups` for every connection. */
+  consumerGroups?: string[];
+  /** Response for `get_topic_status`. */
+  topicStatus?: TopicStatusFixture;
+  /** Messages returned by `fetch_messages`. */
+  messages?: KafkaMessageFixture[];
+  /** Response for `get_consumer_group_status`. */
+  consumerGroupStatus?: ConsumerGroupInfoFixture;
+};
+
+type MockInitOptions = {
+  home: string;
+  recentProjects: RecentProjectFixture[];
+  connections: ConnectionFixture[];
+  testConnectionResult: TestConnectionFixture;
+  topics: string[];
+  consumerGroups: string[];
+  topicStatus?: TopicStatusFixture;
+  messages: KafkaMessageFixture[];
+  consumerGroupStatus?: ConsumerGroupInfoFixture;
 };
 
 /**
@@ -106,7 +128,7 @@ export type TauriMockOptions = {
  */
 export async function installTauriMock(page: Page, options: TauriMockOptions): Promise<void> {
   await page.addInitScript(
-    (mockOptions) => {
+    (mockOptions: MockInitOptions) => {
       const calls: TauriInvokeCall[] = [];
       const callbacks = new Map<number, (payload: unknown) => void>();
       const connections = [...mockOptions.connections];
@@ -178,6 +200,18 @@ export async function installTauriMock(page: Page, options: TauriMockOptions): P
             }
             case 'test_connection':
               return mockOptions.testConnectionResult;
+            case 'list_topics':
+              return mockOptions.topics;
+            case 'list_consumer_groups':
+              return mockOptions.consumerGroups;
+            case 'get_topic_status':
+              return mockOptions.topicStatus;
+            case 'fetch_messages':
+              return mockOptions.messages;
+            case 'produce_message':
+              return null;
+            case 'get_consumer_group_status':
+              return mockOptions.consumerGroupStatus;
             case 'plugin:event|listen': {
               const eventId = nextEventId;
               nextEventId += 1;
@@ -207,6 +241,11 @@ export async function installTauriMock(page: Page, options: TauriMockOptions): P
       recentProjects: options.recentProjects ?? [],
       connections: options.connections ?? [],
       testConnectionResult: options.testConnectionResult ?? DEFAULT_TEST_RESULT,
+      topics: options.topics ?? [],
+      consumerGroups: options.consumerGroups ?? [],
+      topicStatus: options.topicStatus,
+      messages: options.messages ?? [],
+      consumerGroupStatus: options.consumerGroupStatus,
     }
   );
 }

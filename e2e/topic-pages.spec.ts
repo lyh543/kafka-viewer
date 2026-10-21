@@ -96,12 +96,12 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe('主题页面', () => {
-  test('双击主题打开状态页并渲染分区表', async ({ page }) => {
+  test('单击主题打开状态页并渲染分区表', async ({ page }) => {
     await page.getByRole('button', { name: '主题' }).click();
     const topicLeaf = page.getByRole('button', { name: 'orders' });
     await expect(topicLeaf).toBeVisible();
 
-    await topicLeaf.dblclick();
+    await topicLeaf.click();
 
     await expect(page.getByRole('heading', { name: 'orders' })).toBeVisible();
     await expect(page.getByRole('button', { name: /orders - 状态/ })).toBeVisible();
@@ -114,7 +114,7 @@ test.describe('主题页面', () => {
 
   test('开启自动刷新后出现间隔选择器', async ({ page }) => {
     await page.getByRole('button', { name: '主题' }).click();
-    await page.getByRole('button', { name: 'orders' }).dblclick();
+    await page.getByRole('button', { name: 'orders' }).click();
     await expect(page.getByRole('heading', { name: 'orders' })).toBeVisible();
 
     const autoRefreshSwitch = page.getByRole('switch');
@@ -126,7 +126,7 @@ test.describe('主题页面', () => {
 
   test('切换到数据页后可以展开消息详情并写入消息', async ({ page }) => {
     await page.getByRole('button', { name: '主题' }).click();
-    await page.getByRole('button', { name: 'orders' }).dblclick();
+    await page.getByRole('button', { name: 'orders' }).click();
     await expect(page.getByRole('heading', { name: 'orders' })).toBeVisible();
 
     await page.getByRole('button', { name: '查看数据' }).click();
@@ -175,7 +175,7 @@ test.describe('主题页面', () => {
 
   test('筛选面板可以切换起点并触发重新拉取', async ({ page }) => {
     await page.getByRole('button', { name: '主题' }).click();
-    await page.getByRole('button', { name: 'orders' }).dblclick();
+    await page.getByRole('button', { name: 'orders' }).click();
     await page.getByRole('button', { name: '查看数据' }).click();
 
     await page.getByRole('button', { name: '筛选' }).click();
@@ -193,18 +193,18 @@ test.describe('主题页面', () => {
 });
 
 test.describe('消费者组页面', () => {
-  test('双击消费者组展示成员与 lag 状态', async ({ page }) => {
+  test('单击消费者组展示成员与 lag 状态', async ({ page }) => {
     await page.getByRole('button', { name: '消费者组' }).click();
     const groupLeaf = page.getByRole('button', { name: 'group-a' });
     await expect(groupLeaf).toBeVisible();
 
-    await groupLeaf.dblclick();
+    await groupLeaf.click();
 
     await expect(page.getByRole('heading', { name: 'group-a' })).toBeVisible();
     await expect(page.getByText('Stable')).toBeVisible();
     await expect(page.getByText('member-1')).toBeVisible();
     await expect(page.getByText('client-1')).toBeVisible();
-    await expect(page.getByText('1500')).toBeVisible();
+    await expect(page.getByText('1500').last()).toBeVisible();
 
     const groupCall = (await getInvokeCalls(page)).find(
       (call) => call.cmd === 'get_consumer_group_status'

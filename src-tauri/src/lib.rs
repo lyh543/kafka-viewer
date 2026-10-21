@@ -1,12 +1,19 @@
+mod cache;
 mod commands;
 mod error;
 mod kafka;
-mod cache;
+mod logging;
 mod project;
 
+use cache::message_cache::MessageCache;
 use kafka::client::KafkaClientManager;
 use project::manager::ProjectManager;
-use cache::message_cache::MessageCache;
+
+/// Initializes the logger so backend and frontend logs are both printed to
+/// stdout and buffered for the in-app log viewer.
+pub fn init_logging() {
+    logging::init();
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -43,6 +50,7 @@ pub fn run() {
             commands::consumer_group::get_consumer_group_status,
             // Logging commands
             commands::logging::log_frontend,
+            commands::logging::get_recent_logs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

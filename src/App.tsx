@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import Main from './pages/Main';
 import Welcome from './pages/Welcome';
+import LogDialog from './components/LogDialog';
 import { Toaster } from './components/ui/sonner';
 import { frontendLogger } from './utils/logger';
+import { notifyError } from './utils/notify';
 import * as projectApi from './api/project';
 import { useProjectStore } from './stores/project';
-import { toast } from 'sonner';
 
 export default function App() {
   const { currentProject, setCurrentProject, setRecentProjects } = useProjectStore();
@@ -96,8 +97,7 @@ export default function App() {
               try {
                 await projectApi.closeProject();
               } catch (error) {
-                frontendLogger.error('app', 'Failed to close project cleanly', error);
-                toast.error(`关闭项目失败: ${String(error)}`);
+                notifyError(`关闭项目失败: ${String(error)}`, error, 'app');
                 return;
               }
 
@@ -109,6 +109,7 @@ export default function App() {
       ) : (
         <Welcome onProjectOpened={() => setProjectOpen(true)} />
       )}
+      <LogDialog />
       <Toaster />
     </>
   );

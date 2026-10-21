@@ -16,7 +16,7 @@ interface MenuBarProps {
 
 function MenuButton({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-8 items-center rounded-[10px] px-3 text-sm text-foreground transition-colors hover:bg-surface-soft">
+    <div className="flex h-5 items-center rounded-[4px] px-1.5 text-[11px] text-foreground transition-colors hover:bg-surface-soft">
       {children}
     </div>
   );
@@ -28,12 +28,12 @@ export default function MenuBar({ onCloseProject }: MenuBarProps) {
 
   return (
     <>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button type="button">
               <MenuButton>
-                <File className="mr-2 h-4 w-4" />
+                <File className="mr-1 h-3 w-3" />
                 文件
               </MenuButton>
             </button>
@@ -51,7 +51,7 @@ export default function MenuBar({ onCloseProject }: MenuBarProps) {
           <DropdownMenuTrigger asChild>
             <button type="button">
               <MenuButton>
-                <HelpCircle className="mr-2 h-4 w-4" />
+                <HelpCircle className="mr-1 h-3 w-3" />
                 帮助
               </MenuButton>
             </button>

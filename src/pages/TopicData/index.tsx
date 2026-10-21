@@ -22,6 +22,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { type RefreshInterval, useAutoRefresh } from '@/hooks/useAutoRefresh';
 import type { DataFilter, KafkaMessage } from '@/types/topic';
+import { notifyError } from '@/utils/notify';
 
 interface TopicDataProps {
   connectionId: string;
@@ -47,7 +48,7 @@ const START_FROM_OPTIONS: { label: string; value: DataFilter['start_from']['type
 const PAGE_SIZE_OPTIONS = [20, 50, 100];
 
 const selectClass =
-  'h-9 rounded-[10px] border border-border bg-white px-3 text-sm text-foreground outline-none focus-visible:border-[color:var(--ring)]';
+  'h-7 rounded-[6px] border border-border bg-white px-2 text-xs text-foreground outline-none focus-visible:border-[color:var(--ring)]';
 
 const initialProduceForm = { key: '', value: '', headers: '', partition: '' };
 
@@ -75,7 +76,7 @@ export default function TopicData({ connectionId, connectionName, topicName }: T
       const data = await topicApi.fetchMessages(connectionId, topicName, filter);
       setMessages(data);
     } catch (error) {
-      toast.error(`加载消息失败: ${String(error)}`);
+      notifyError(`加载消息失败: ${String(error)}`, error, 'topic-data');
     } finally {
       setInitialLoading(false);
     }
@@ -122,7 +123,7 @@ export default function TopicData({ connectionId, connectionName, topicName }: T
       setProduceForm(initialProduceForm);
       void refresh();
     } catch (error) {
-      toast.error(`发送失败: ${String(error)}`);
+      notifyError(`发送失败: ${String(error)}`, error, 'topic-data');
     }
   };
 
@@ -152,24 +153,21 @@ export default function TopicData({ connectionId, connectionName, topicName }: T
   const startFromCount = filter.start_from.type === 'last_n' ? filter.start_from.count : 0;
 
   return (
-    <section className="space-y-6">
-      <div className="rounded-[12px] bg-signature-peach/35 p-6">
-        <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-foreground">
-            <TableProperties className="h-5 w-5" />
+    <section className="space-y-2">
+      <div className="rounded-[8px] bg-signature-peach/35 p-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-foreground">
+            <TableProperties className="h-4 w-4" />
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-muted">Topic Data</p>
-            <h2 className="mt-2 text-2xl font-medium text-foreground">{topicName}</h2>
-            <p className="mt-2 text-sm leading-6 text-body">
-              当前连接: {connectionName} · {connectionId}
-            </p>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted">Topic Data</p>
+            <h2 className="text-lg leading-tight text-foreground">{topicName}</h2>
           </div>
         </div>
       </div>
 
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3 rounded-[12px] border border-border bg-white px-4 py-3">
+      <div className="flex flex-wrap items-center gap-2 rounded-[8px] border border-border bg-white px-2 py-1.5">
         <RefreshButton loading={loading} onRefresh={() => void refresh()} />
         <Button onClick={() => setProduceModalOpen(true)} size="sm" variant="outline">
           <Send className="h-4 w-4" />
@@ -198,7 +196,7 @@ export default function TopicData({ connectionId, connectionName, topicName }: T
 
       {/* Filter panel */}
       {filterVisible ? (
-        <div className="flex flex-wrap items-center gap-4 rounded-[12px] border border-border bg-surface-soft px-4 py-4 text-sm text-body">
+        <div className="flex flex-wrap items-center gap-2 rounded-[8px] border border-border bg-surface-soft px-2 py-1.5 text-xs text-body">
           <div className="flex items-center gap-2">
             <span className="text-muted">起点:</span>
             <select
@@ -224,7 +222,7 @@ export default function TopicData({ connectionId, connectionName, topicName }: T
             </select>
             {filter.start_from.type === 'last_n' ? (
               <Input
-                className="h-9 w-20 rounded-[10px] px-3"
+                className="h-7 w-20 rounded-[6px] px-2 text-xs"
                 min={1}
                 onChange={(event) =>
                   setFilter((previous) => ({
@@ -262,7 +260,7 @@ export default function TopicData({ connectionId, connectionName, topicName }: T
             </select>
             {filter.key_filter ? (
               <Input
-                className="h-9 w-32 rounded-[10px] px-3"
+                className="h-7 w-32 rounded-[6px] px-2 text-xs"
                 onChange={(event) =>
                   setFilter((previous) => ({
                     ...previous,
@@ -299,7 +297,7 @@ export default function TopicData({ connectionId, connectionName, topicName }: T
             </select>
             {filter.value_filter ? (
               <Input
-                className="h-9 w-32 rounded-[10px] px-3"
+                className="h-7 w-32 rounded-[6px] px-2 text-xs"
                 onChange={(event) =>
                   setFilter((previous) => ({
                     ...previous,
@@ -320,29 +318,29 @@ export default function TopicData({ connectionId, connectionName, topicName }: T
 
       {/* Messages table */}
       {initialLoading ? (
-        <div className="space-y-2 rounded-[12px] border border-border bg-white p-4">
+        <div className="space-y-1 rounded-[8px] border border-border bg-white p-2">
           {Array.from({ length: 8 }).map((_, index) => (
-            <div className="h-8 animate-pulse rounded-[6px] bg-surface-soft" key={index} />
+            <div className="h-5 animate-pulse rounded-[4px] bg-surface-soft" key={index} />
           ))}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-[12px] border border-border bg-white">
+        <div className="overflow-hidden rounded-[8px] border border-border bg-white">
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse">
               <thead className="bg-surface-soft">
                 <tr>
-                  <th className="w-10 px-4 py-3" />
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.18em] text-muted">分区</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.18em] text-muted">偏移量</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.18em] text-muted">时间</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.18em] text-muted">Key</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.18em] text-muted">Value</th>
+                  <th className="w-6 px-1 py-1" />
+                  <th className="px-2 py-1 text-left text-[10px] font-medium uppercase tracking-[0.16em] text-muted">分区</th>
+                  <th className="px-2 py-1 text-left text-[10px] font-medium uppercase tracking-[0.16em] text-muted">偏移量</th>
+                  <th className="px-2 py-1 text-left text-[10px] font-medium uppercase tracking-[0.16em] text-muted">时间</th>
+                  <th className="px-2 py-1 text-left text-[10px] font-medium uppercase tracking-[0.16em] text-muted">Key</th>
+                  <th className="px-2 py-1 text-left text-[10px] font-medium uppercase tracking-[0.16em] text-muted">Value</th>
                 </tr>
               </thead>
               <tbody>
                 {pagedMessages.length === 0 ? (
                   <tr>
-                    <td className="px-4 py-10 text-center text-sm text-body" colSpan={6}>
+                    <td className="px-2 py-4 text-center text-xs text-body" colSpan={6}>
                       暂无消息
                     </td>
                   </tr>
@@ -354,41 +352,41 @@ export default function TopicData({ connectionId, connectionName, topicName }: T
                     return (
                       <Fragment key={key}>
                         <tr className="border-t border-border">
-                          <td className="px-4 py-3">
+                          <td className="px-1 py-0.5">
                             <button
                               aria-label={isExpanded ? '收起详情' : '展开详情'}
-                              className="rounded-[6px] p-1 text-muted transition-colors hover:bg-surface-soft hover:text-foreground"
+                              className="rounded-[4px] p-0.5 text-muted transition-colors hover:bg-surface-soft hover:text-foreground"
                               onClick={() => toggleExpanded(key)}
                               type="button"
                             >
-                              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                              {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                             </button>
                           </td>
-                          <td className="px-4 py-3 text-sm text-foreground">{message.partition}</td>
-                          <td className="px-4 py-3 text-sm text-foreground">{message.offset}</td>
-                          <td className="px-4 py-3 text-sm text-body">
+                          <td className="px-2 py-0.5 text-xs text-foreground">{message.partition}</td>
+                          <td className="px-2 py-0.5 text-xs text-foreground">{message.offset}</td>
+                          <td className="px-2 py-0.5 text-xs text-body">
                             {message.timestamp ? new Date(message.timestamp).toLocaleString() : '-'}
                           </td>
-                          <td className="max-w-[12rem] truncate px-4 py-3 text-sm text-body">
+                          <td className="max-w-[12rem] truncate px-2 py-0.5 text-xs text-body">
                             {message.key ?? <span className="text-muted">null</span>}
                           </td>
-                          <td className="max-w-[22rem] truncate px-4 py-3 text-sm text-body">
+                          <td className="max-w-[22rem] truncate px-2 py-0.5 text-xs text-body">
                             {message.value ?? <span className="text-muted">null</span>}
                           </td>
                         </tr>
                         {isExpanded ? (
                           <tr className="border-t border-border bg-surface-soft">
-                            <td className="px-4 py-4" colSpan={6}>
-                              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted">Value</p>
-                              <pre className="mt-2 max-h-52 overflow-auto whitespace-pre-wrap break-all rounded-[6px] border border-border bg-white p-3 text-xs leading-5 text-body">
+                            <td className="px-2 py-2" colSpan={6}>
+                              <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted">Value</p>
+                              <pre className="mt-1 max-h-52 overflow-auto whitespace-pre-wrap break-all rounded-[4px] border border-border bg-white p-2 text-[11px] leading-5 text-body">
                                 {message.value}
                               </pre>
                               {message.headers && Object.keys(message.headers).length > 0 ? (
                                 <>
-                                  <p className="mt-4 text-xs font-medium uppercase tracking-[0.18em] text-muted">
+                                  <p className="mt-2 text-[10px] font-medium uppercase tracking-[0.16em] text-muted">
                                     Headers
                                   </p>
-                                  <pre className="mt-2 overflow-auto rounded-[6px] border border-border bg-white p-3 text-xs leading-5 text-body">
+                                  <pre className="mt-1 overflow-auto rounded-[4px] border border-border bg-white p-2 text-[11px] leading-5 text-body">
                                     {JSON.stringify(message.headers, null, 2)}
                                   </pre>
                                 </>
@@ -404,7 +402,7 @@ export default function TopicData({ connectionId, connectionName, topicName }: T
             </table>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 border-t border-border px-4 py-3 text-sm text-body">
+          <div className="flex flex-wrap items-center gap-2 border-t border-border px-2 py-1 text-xs text-body">
             <span>
               第 {currentPage + 1} / {totalPages} 页 · 共 {messages.length} 条
             </span>

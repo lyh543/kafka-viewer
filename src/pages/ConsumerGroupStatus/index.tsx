@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Users } from 'lucide-react';
-import { toast } from 'sonner';
 import * as consumerGroupApi from '@/api/consumer-group';
 import { AutoRefreshControls, RefreshButton } from '@/components/AutoRefresh';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +9,7 @@ import type {
   ConsumerGroupMember,
   ConsumerGroupOffset,
 } from '@/types/consumer-group';
+import { notifyError } from '@/utils/notify';
 
 interface ConsumerGroupStatusProps {
   connectionId: string;
@@ -18,7 +18,7 @@ interface ConsumerGroupStatusProps {
 }
 
 const thClass =
-  'px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.18em] text-muted';
+  'px-2 py-1 text-left text-[10px] font-medium uppercase tracking-[0.16em] text-muted';
 
 const lagVariant = (lag: number) => {
   if (lag > 1000) return 'danger' as const;
@@ -41,7 +41,7 @@ export default function ConsumerGroupStatus({
       const info = await consumerGroupApi.getConsumerGroupStatus(connectionId, groupId);
       setData(info);
     } catch (error) {
-      toast.error(`加载消费者组状态失败: ${String(error)}`);
+      notifyError(`加载消费者组状态失败: ${String(error)}`, error, 'consumer-group');
     } finally {
       setInitialLoading(false);
     }
@@ -58,10 +58,10 @@ export default function ConsumerGroupStatus({
 
   const renderMemberRow = (member: ConsumerGroupMember) => (
     <tr className="border-t border-border" key={member.member_id}>
-      <td className="max-w-[16rem] truncate px-4 py-3 text-sm text-foreground">{member.member_id}</td>
-      <td className="px-4 py-3 text-sm text-body">{member.client_id}</td>
-      <td className="px-4 py-3 text-sm text-body">{member.host}</td>
-      <td className="px-4 py-3 text-sm text-body">
+      <td className="max-w-[16rem] truncate px-2 py-1 text-xs text-foreground">{member.member_id}</td>
+      <td className="px-2 py-1 text-xs text-body">{member.client_id}</td>
+      <td className="px-2 py-1 text-xs text-body">{member.host}</td>
+      <td className="px-2 py-1 text-xs text-body">
         {member.assignments?.map((assignment) => `${assignment.topic}[${assignment.partitions.join(',')}]`).join('; ') ||
           '-'}
       </td>
@@ -70,34 +70,31 @@ export default function ConsumerGroupStatus({
 
   const renderOffsetRow = (offset: ConsumerGroupOffset) => (
     <tr className="border-t border-border" key={`${offset.topic}-${offset.partition}`}>
-      <td className="px-4 py-3 text-sm text-foreground">{offset.topic}</td>
-      <td className="px-4 py-3 text-sm text-foreground">{offset.partition}</td>
-      <td className="px-4 py-3 text-sm text-body">{offset.current_offset}</td>
-      <td className="px-4 py-3 text-sm text-body">{offset.log_end_offset}</td>
-      <td className="px-4 py-3 text-sm">
+      <td className="px-2 py-1 text-xs text-foreground">{offset.topic}</td>
+      <td className="px-2 py-1 text-xs text-foreground">{offset.partition}</td>
+      <td className="px-2 py-1 text-xs text-body">{offset.current_offset}</td>
+      <td className="px-2 py-1 text-xs text-body">{offset.log_end_offset}</td>
+      <td className="px-2 py-1 text-xs">
         <Badge variant={lagVariant(offset.lag)}>{offset.lag}</Badge>
       </td>
     </tr>
   );
 
   return (
-    <section className="space-y-6">
-      <div className="rounded-[12px] bg-signature-mint/35 p-6">
-        <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-foreground">
-            <Users className="h-5 w-5" />
+    <section className="space-y-2">
+      <div className="rounded-[8px] bg-signature-mint/35 p-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-foreground">
+            <Users className="h-4 w-4" />
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-muted">Consumer Group</p>
-            <h2 className="mt-2 text-2xl font-medium text-foreground">{groupId}</h2>
-            <p className="mt-2 text-sm leading-6 text-body">
-              当前连接: {connectionName} · {connectionId}
-            </p>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted">Consumer Group</p>
+            <h2 className="text-lg leading-tight text-foreground">{groupId}</h2>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 rounded-[12px] border border-border bg-white px-4 py-3">
+      <div className="flex flex-wrap items-center gap-2 rounded-[8px] border border-border bg-white px-2 py-1.5">
         <RefreshButton loading={loading} onRefresh={() => void refresh()} />
 
         <AutoRefreshControls
@@ -111,37 +108,37 @@ export default function ConsumerGroupStatus({
       </div>
 
       {initialLoading ? (
-        <div className="space-y-2 rounded-[12px] border border-border bg-white p-4">
+        <div className="space-y-1 rounded-[8px] border border-border bg-white p-2">
           {Array.from({ length: 6 }).map((_, index) => (
-            <div className="h-8 animate-pulse rounded-[6px] bg-surface-soft" key={index} />
+            <div className="h-5 animate-pulse rounded-[4px] bg-surface-soft" key={index} />
           ))}
         </div>
       ) : data ? (
         <>
-          <div className="grid gap-4 md:grid-cols-4">
-            <div className="rounded-[12px] border border-border bg-white p-5">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted">消费者组</p>
-              <p className="mt-2 truncate text-sm font-medium text-foreground">{data.group_id}</p>
+          <div className="grid gap-2 md:grid-cols-4">
+            <div className="rounded-[8px] border border-border bg-white p-2.5">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-muted">消费者组</p>
+              <p className="mt-0.5 truncate text-xs font-normal text-foreground">{data.group_id}</p>
             </div>
-            <div className="rounded-[12px] border border-border bg-white p-5">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted">状态</p>
-              <p className="mt-2">
+            <div className="rounded-[8px] border border-border bg-white p-2.5">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-muted">状态</p>
+              <p className="mt-0.5">
                 <Badge variant={data.state === 'Stable' ? 'success' : 'warning'}>{data.state}</Badge>
               </p>
             </div>
-            <div className="rounded-[12px] border border-border bg-white p-5">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted">协议类型</p>
-              <p className="mt-2 text-sm font-medium text-foreground">{data.protocol_type}</p>
+            <div className="rounded-[8px] border border-border bg-white p-2.5">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-muted">协议类型</p>
+              <p className="mt-0.5 text-xs font-medium text-foreground">{data.protocol_type}</p>
             </div>
-            <div className="rounded-[12px] border border-border bg-white p-5">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted">成员数</p>
-              <p className="mt-2 text-sm font-medium text-foreground">{data.members.length}</p>
+            <div className="rounded-[8px] border border-border bg-white p-2.5">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-muted">成员数</p>
+              <p className="mt-0.5 text-xs font-medium text-foreground">{data.members.length}</p>
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-[12px] border border-border bg-white">
-            <div className="border-b border-border px-5 py-4">
-              <h3 className="text-sm font-medium text-foreground">成员列表</h3>
+          <div className="overflow-hidden rounded-[8px] border border-border bg-white">
+            <div className="border-b border-border px-2 py-1.5">
+              <h3 className="text-xs font-medium text-foreground">成员列表</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full border-collapse">
@@ -156,7 +153,7 @@ export default function ConsumerGroupStatus({
                 <tbody>
                   {data.members.length === 0 ? (
                     <tr>
-                      <td className="px-4 py-10 text-center text-sm text-body" colSpan={4}>
+                      <td className="px-2 py-4 text-center text-xs text-body" colSpan={4}>
                         暂无活跃成员
                       </td>
                     </tr>
@@ -168,9 +165,9 @@ export default function ConsumerGroupStatus({
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-[12px] border border-border bg-white">
-            <div className="border-b border-border px-5 py-4">
-              <h3 className="text-sm font-medium text-foreground">偏移量信息</h3>
+          <div className="overflow-hidden rounded-[8px] border border-border bg-white">
+            <div className="border-b border-border px-2 py-1.5">
+              <h3 className="text-xs font-medium text-foreground">偏移量信息</h3>
             </div>
             <div className="max-h-[22rem] overflow-auto">
               <table className="min-w-full border-collapse">
@@ -186,7 +183,7 @@ export default function ConsumerGroupStatus({
                 <tbody>
                   {data.offsets.length === 0 ? (
                     <tr>
-                      <td className="px-4 py-10 text-center text-sm text-body" colSpan={5}>
+                      <td className="px-2 py-4 text-center text-xs text-body" colSpan={5}>
                         暂无偏移量信息
                       </td>
                     </tr>
@@ -199,7 +196,7 @@ export default function ConsumerGroupStatus({
           </div>
         </>
       ) : (
-        <div className="rounded-[12px] border border-dashed border-border-strong bg-white px-6 py-10 text-sm leading-6 text-body">
+        <div className="rounded-[8px] border border-dashed border-border-strong bg-white px-2 py-3 text-xs leading-5 text-body">
           未能加载消费者组状态。
         </div>
       )}

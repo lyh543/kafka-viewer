@@ -1,3 +1,5 @@
+use crate::logging;
+
 #[tauri::command]
 pub fn log_frontend(level: &str, message: &str, scope: Option<&str>) -> Result<(), String> {
     let scope_prefix = scope
@@ -13,4 +15,12 @@ pub fn log_frontend(level: &str, message: &str, scope: Option<&str>) -> Result<(
     }
 
     Ok(())
+}
+
+/// Returns recent application logs (frontend + backend) for the log viewer.
+#[tauri::command]
+pub fn get_recent_logs(limit: Option<usize>) -> Vec<String> {
+    let limit = limit.unwrap_or(500).clamp(1, 2000);
+
+    logging::recent_lines(limit)
 }

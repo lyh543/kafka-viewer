@@ -17,6 +17,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useProjectStore } from '@/stores/project';
 import type { RecentProject } from '@/types/project';
+import { notifyError } from '@/utils/notify';
 
 const DEFAULT_PROJECT_NAME = 'my-project';
 const DEFAULT_PROJECT_PARENT = 'KafkaViewer/projects';
@@ -99,7 +100,7 @@ export default function Welcome({ onProjectOpened }: WelcomeProps) {
       setFormValues({ name: DEFAULT_PROJECT_NAME, path: '' });
       onProjectOpened();
     } catch (error) {
-      toast.error(`创建项目失败: ${String(error)}`);
+      notifyError(`创建项目失败: ${String(error)}`, error, 'welcome');
     } finally {
       setSubmitting(false);
     }
@@ -117,7 +118,7 @@ export default function Welcome({ onProjectOpened }: WelcomeProps) {
       setCurrentProject(project);
       onProjectOpened();
     } catch (error) {
-      toast.error(`打开项目失败: ${String(error)}`);
+      notifyError(`打开项目失败: ${String(error)}`, error, 'welcome');
     }
   };
 
@@ -127,7 +128,7 @@ export default function Welcome({ onProjectOpened }: WelcomeProps) {
       setCurrentProject(project);
       onProjectOpened();
     } catch (error) {
-      toast.error(`打开项目失败: ${String(error)}`);
+      notifyError(`打开项目失败: ${String(error)}`, error, 'welcome');
     }
   };
 
@@ -138,7 +139,7 @@ export default function Welcome({ onProjectOpened }: WelcomeProps) {
       await projectApi.removeRecentProject(path);
       setRecentProjects(recentProjects.filter((project) => project.path !== path));
     } catch (error) {
-      toast.error(`移除失败: ${String(error)}`);
+      notifyError(`移除失败: ${String(error)}`, error, 'welcome');
     }
   };
 

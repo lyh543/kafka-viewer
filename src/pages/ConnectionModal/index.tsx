@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import * as connectionApi from '@/api/connection';
 import { useConnectionStore } from '@/stores/connection';
+import { notifyError } from '@/utils/notify';
 import type {
   AuthConfig,
   KafkaConnection,
@@ -99,7 +100,7 @@ export default function ConnectionModal({ open, onClose }: ConnectionModalProps)
     }
 
     connectionApi.getConnections().then(setConnections).catch((error) => {
-      toast.error(`加载连接失败: ${String(error)}`);
+      notifyError(`加载连接失败: ${String(error)}`, error, 'connection-modal');
     });
   }, [open, setConnections]);
 
@@ -284,7 +285,7 @@ export default function ConnectionModal({ open, onClose }: ConnectionModalProps)
     try {
       await connectionApi.deleteConnection(deletingId);
     } catch (error) {
-      toast.error(`删除失败: ${String(error)}`);
+      notifyError(`删除失败: ${String(error)}`, error, 'connection-modal');
     }
   };
 
@@ -359,7 +360,7 @@ export default function ConnectionModal({ open, onClose }: ConnectionModalProps)
       toast.success('连接已保存');
       return true;
     } catch (error) {
-      toast.error(`保存失败: ${String(error)}`);
+      notifyError(`保存失败: ${String(error)}`, error, 'connection-modal');
       return false;
     }
   };

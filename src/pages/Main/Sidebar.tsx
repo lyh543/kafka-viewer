@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ChevronDown,
   ChevronRight,
+  Copy,
   Database,
   Eye,
   FolderTree,
@@ -15,12 +16,31 @@ import { toast } from 'sonner';
 import * as consumerGroupApi from '@/api/consumer-group';
 import * as topicApi from '@/api/topic';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTabNavigation } from '@/hooks/useTabNavigation';
 import { useConnectionStore } from '@/stores/connection';
+import { notifyError } from '@/utils/notify';
 
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+}
+
+type ContextItem = {
+  label: string;
+  onClick: () => void;
+  icon?: React.ReactNode;
+};
+
+function TruncatedLabel({ text, className }: { text: string; className?: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className={className ? `${className} truncate` : 'truncate'}>{text}</span>
+      </TooltipTrigger>
+      <TooltipContent>{text}</TooltipContent>
+    </Tooltip>
+  );
 }
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
@@ -54,6 +74,15 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     };
   }, [contextMenu]);
 
+  const copyText = useCallback(async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`${label}已复制`);
+    } catch (error) {
+      notifyError(`复制失败: ${String(error)}`, error, 'sidebar');
+    }
+  }, []);
+
   const loadTopics = useCallback(
     async (connectionId: string, force = false) => {
       if (topicsLoading[connectionId]) {
@@ -70,7 +99,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         const topics = await topicApi.listTopics(connectionId);
         setTopics(connectionId, topics);
       } catch (error) {
-        toast.error(`加载主题列表失败: ${String(error)}`);
+        notifyError(`加载主题列表失败: ${String(error)}`, error, 'sidebar');
       } finally {
         setTopicsLoading((state) => ({ ...state, [connectionId]: false }));
       }
@@ -94,7 +123,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         const groups = await consumerGroupApi.listConsumerGroups(connectionId);
         setConsumerGroups(connectionId, groups);
       } catch (error) {
-        toast.error(`加载消费者组列表失败: ${String(error)}`);
+        notifyError(`加载消费者组列表失败: ${String(error)}`, error, 'sidebar');
       } finally {
         setConsumerGroupsLoading((state) => ({ ...state, [connectionId]: false }));
       }
@@ -135,9 +164,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     );
   };
 
-  const contextItems = useMemo(() => {
+  const contextItems = useMemo<ContextItem[]>(() => {
     if (!contextMenu) {
-      return [] as Array<{ label: string; onClick: () => void }>;
+      return [];
     }
 
     const parts = contextMenu.key.split('::');
@@ -148,9 +177,19 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       return [
         {
           label: '刷新',
+          icon: <RefreshCw className="h-3.5 w-3.5" />,
           onClick: () => {
             void loadTopics(connectionId, true);
             void loadConsumerGroups(connectionId, true);
+          },
+        },
+        {
+          label: '复制连接信息',
+          icon: <Copy className="h-3.5 w-3.5" />,
+          onClick: () => {
+            if (connection) {
+              void copyText(`${connection.name} ${connection.brokers}`, '连接信息');
+            }
           },
         },
       ];
@@ -160,6 +199,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       return [
         {
           label: '刷新主题列表',
+          icon: <RefreshCw className="h-3.5 w-3.5" />,
           onClick: () => {
             void loadTopics(connectionId, true);
           },
@@ -168,14 +208,25 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     }
 
     if (parts[2] === 'topic') {
+      const topicName = parts[3];
+
       return [
         {
-          label: '查看主题状态',
-          onClick: () => openTopicStatus(connectionId, connection?.name ?? '', parts[3]),
+          label: '查看详情',
+          icon: <Eye className="h-3.5 w-3.5" />,
+          onClick: () => openTopicStatus(connectionId, connection?.name ?? '', topicName),
         },
         {
-          label: '查看主题数据',
-          onClick: () => openTopicData(connectionId, connection?.name ?? '', parts[3]),
+          label: '查看数据',
+          icon: <TableProperties className="h-3.5 w-3.5" />,
+          onClick: () => openTopicData(connectionId, connection?.name ?? '', topicName),
+        },
+        {
+          label: '复制主题名',
+          icon: <Copy className="h-3.5 w-3.5" />,
+          onClick: () => {
+            void copyText(topicName, '主题名');
+          },
         },
       ];
     }
@@ -184,6 +235,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       return [
         {
           label: '刷新消费者组列表',
+          icon: <RefreshCw className="h-3.5 w-3.5" />,
           onClick: () => {
             void loadConsumerGroups(connectionId, true);
           },
@@ -192,40 +244,62 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     }
 
     if (parts[2] === 'consumer-group') {
+      const groupId = parts[3];
+
       return [
         {
-          label: '查看消费者组状态',
-          onClick: () => openConsumerGroupStatus(connectionId, connection?.name ?? '', parts[3]),
+          label: '查看详情',
+          icon: <Eye className="h-3.5 w-3.5" />,
+          onClick: () => openConsumerGroupStatus(connectionId, connection?.name ?? '', groupId),
+        },
+        {
+          label: '复制消费者组名',
+          icon: <Copy className="h-3.5 w-3.5" />,
+          onClick: () => {
+            void copyText(groupId, '消费者组名');
+          },
         },
       ];
     }
 
     return [];
-  }, [connections, contextMenu, loadConsumerGroups, loadTopics, openConsumerGroupStatus, openTopicData, openTopicStatus]);
+  }, [
+    connections,
+    contextMenu,
+    copyText,
+    loadConsumerGroups,
+    loadTopics,
+    openConsumerGroupStatus,
+    openTopicData,
+    openTopicStatus,
+  ]);
 
   const renderLeaf = (
     key: string,
     label: string,
     icon: React.ReactNode,
-    onDoubleClick: () => void
+    onOpen: () => void,
+    onOpenData?: () => void
   ) => (
     <button
-      className="flex w-full items-center gap-2 rounded-[10px] px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-surface-soft"
+      className="flex w-full items-center gap-1 rounded-[4px] px-1.5 py-0 text-left font-light leading-4 text-foreground transition-colors hover:bg-surface-soft"
+      key={key}
+      onClick={onOpen}
       onContextMenu={(event) => {
         event.preventDefault();
         setContextMenu({ key, x: event.clientX, y: event.clientY });
       }}
-      onDoubleClick={onDoubleClick}
+      onDoubleClick={onOpenData}
       type="button"
     >
-      <span className="text-muted">{icon}</span>
-      <span className="truncate">{label}</span>
+      <span className="shrink-0 text-muted">{icon}</span>
+      <TruncatedLabel className="min-w-0 flex-1 text-left text-[14px] font-light text-muted" text={label} />
     </button>
   );
 
   if (collapsed) {
     return (
-      <div className="flex h-full flex-col items-center gap-3 p-2">
+      <div className="flex h-full flex-col items-center gap-3 p-1.5">
         <Button onClick={onToggle} size="icon" variant="ghost">
           <PanelLeftOpen className="h-4 w-4" />
         </Button>
@@ -235,24 +309,23 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+      <div className="flex items-center justify-between border-b border-border px-2 py-1.5">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-muted">Navigator</p>
-          <h2 className="mt-1 text-sm font-medium text-foreground">Connections</h2>
+          <p className="text-[16px] uppercase tracking-[0.1em] text-muted">Connections</p>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           <Button onClick={() => void refreshAllLoaded()} size="icon" variant="ghost">
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className="h-3.5 w-3.5" />
           </Button>
           <Button onClick={onToggle} size="icon" variant="ghost">
-            <PanelLeftClose className="h-4 w-4" />
+            <PanelLeftClose className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-auto p-4">
+      <div className="flex-1 space-y-1.5 overflow-auto p-1.5">
         {connections.length === 0 ? (
-          <div className="rounded-[12px] border border-dashed border-border-strong bg-surface-soft px-4 py-5 text-sm leading-6 text-body">
+          <div className="rounded-[6px] border border-dashed border-border-strong bg-surface-soft px-2 py-3 text-xs leading-5 text-body">
             暂无连接。打开连接管理器创建或选择一条连接后，再回来浏览主题与消费者组。
           </div>
         ) : (
@@ -265,9 +338,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             const isGroupsExpanded = expandedKeys[groupsKey] ?? false;
 
             return (
-              <div className="rounded-[12px] border border-border bg-white" key={connection.id}>
+              <div className="rounded-[6px] border border-border bg-white" key={connection.id}>
                 <button
-                  className="flex w-full items-start gap-3 px-4 py-3 text-left"
+                  className="flex w-full items-start gap-1.5 px-1.5 py-1 text-left"
                   onClick={() => void toggleExpanded(connectionKey)}
                   onContextMenu={(event) => {
                     event.preventDefault();
@@ -275,23 +348,22 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   }}
                   type="button"
                 >
-                  <span className="mt-0.5 text-muted">
-                    {isConnectionExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  <span className="mt-0.5 shrink-0 text-muted">
+                    {isConnectionExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                   </span>
-                  <span className="mt-0.5 text-muted">
-                    <Database className="h-4 w-4" />
+                  <span className="mt-0.5 shrink-0 text-muted">
+                    <Database className="h-3 w-3" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-foreground">{connection.name}</span>
-                    <span className="mt-1 block truncate text-xs text-muted">{connection.brokers}</span>
+                    <TruncatedLabel className="block text-[14px] leading-4 text-foreground" text={connection.name} />
                   </span>
                 </button>
 
                 {isConnectionExpanded ? (
-                  <div className="space-y-1 px-3 pb-3">
-                    <div className="pl-6">
+                  <div className="space-y-0.5 px-1.5 pb-1.5">
+                    <div className="pl-3">
                       <button
-                        className="flex w-full items-center gap-2 rounded-[10px] px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-surface-soft"
+                        className="flex w-full items-center gap-1 rounded-[4px] px-1.5 py-0 text-left text-[11px] font-extralight leading-4 text-foreground transition-colors hover:bg-surface-soft"
                         onClick={() => void toggleExpanded(topicsKey)}
                         onContextMenu={(event) => {
                           event.preventDefault();
@@ -299,34 +371,35 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         }}
                         type="button"
                       >
-                        {isTopicsExpanded ? <ChevronDown className="h-4 w-4 text-muted" /> : <ChevronRight className="h-4 w-4 text-muted" />}
-                        <FolderTree className="h-4 w-4 text-muted" />
-                        <span>主题</span>
+                        {isTopicsExpanded ? <ChevronDown className="h-3 w-3 text-muted" /> : <ChevronRight className="h-3 w-3 text-muted" />}
+                        <FolderTree className="h-3 w-3 text-muted" />
+                        <span className='text-[14px]'>主题</span>
                       </button>
 
                       {isTopicsExpanded ? (
-                        <div className="mt-1 space-y-1 pl-6">
+                        <div className="mt-0 space-y-0 pl-4">
                           {topicsLoading[connection.id] && topicsByConnection[connection.id] === undefined ? (
-                            <div className="rounded-[10px] bg-surface-soft px-3 py-2 text-sm text-muted">加载中...</div>
+                            <div className="rounded-[4px] bg-surface-soft px-1.5 py-0.5 text-[14px] text-muted">加载中...</div>
                           ) : (topicsByConnection[connection.id] ?? []).length > 0 ? (
                             (topicsByConnection[connection.id] ?? []).map((topic) =>
                               renderLeaf(
                                 `conn::${connection.id}::topic::${topic}`,
                                 topic,
-                                <TableProperties className="h-4 w-4" />,
-                                () => openTopicStatus(connection.id, connection.name, topic)
+                                <TableProperties className="h-3 w-3" />,
+                                () => openTopicStatus(connection.id, connection.name, topic),
+                                () => openTopicData(connection.id, connection.name, topic)
                               )
                             )
                           ) : (
-                            <div className="rounded-[10px] bg-surface-soft px-3 py-2 text-sm text-muted">暂无主题</div>
+                            <div className="rounded-[4px] bg-surface-soft px-1.5 py-0.5 text-[14px]-muted">暂无主题</div>
                           )}
                         </div>
                       ) : null}
                     </div>
 
-                    <div className="pl-6">
+                    <div className="pl-3">
                       <button
-                        className="flex w-full items-center gap-2 rounded-[10px] px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-surface-soft"
+                        className="flex w-full items-center gap-1 rounded-[4px] px-1.5 py-0 text-left text-[11px] font-extralight leading-4 text-foreground transition-colors hover:bg-surface-soft"
                         onClick={() => void toggleExpanded(groupsKey)}
                         onContextMenu={(event) => {
                           event.preventDefault();
@@ -334,26 +407,27 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         }}
                         type="button"
                       >
-                        {isGroupsExpanded ? <ChevronDown className="h-4 w-4 text-muted" /> : <ChevronRight className="h-4 w-4 text-muted" />}
-                        <Users className="h-4 w-4 text-muted" />
-                        <span>消费者组</span>
+                        {isGroupsExpanded ? <ChevronDown className="h-3 w-3 text-muted" /> : <ChevronRight className="h-3 w-3 text-muted" />}
+                        <Users className="h-3 w-3 text-muted" />
+                        <span className='text-[14px]'>消费者组</span>
                       </button>
 
                       {isGroupsExpanded ? (
-                        <div className="mt-1 space-y-1 pl-6">
+                        <div className="mt-0 space-y-0 pl-3">
                           {consumerGroupsLoading[connection.id] && consumerGroupsByConnection[connection.id] === undefined ? (
-                            <div className="rounded-[10px] bg-surface-soft px-3 py-2 text-sm text-muted">加载中...</div>
+                            <div className="rounded-[4px] bg-surface-soft px-1.5 py-0.5 text-[11px] text-muted">加载中...</div>
                           ) : (consumerGroupsByConnection[connection.id] ?? []).length > 0 ? (
                             (consumerGroupsByConnection[connection.id] ?? []).map((group) =>
                               renderLeaf(
                                 `conn::${connection.id}::consumer-group::${group}`,
                                 group,
-                                <Eye className="h-4 w-4" />,
+                                <Eye className="h-3 w-3" />,
+                                () => openConsumerGroupStatus(connection.id, connection.name, group),
                                 () => openConsumerGroupStatus(connection.id, connection.name, group)
                               )
                             )
                           ) : (
-                            <div className="rounded-[10px] bg-surface-soft px-3 py-2 text-sm text-muted">暂无消费者组</div>
+                            <div className="rounded-[4px] bg-surface-soft px-1.5 py-0.5 text-[11px] text-muted">暂无消费者组</div>
                           )}
                         </div>
                       ) : null}
@@ -368,12 +442,12 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       {contextMenu && contextItems.length > 0 ? (
         <div
-          className="fixed z-50 min-w-44 rounded-[12px] border border-border bg-white p-1 shadow-[0_24px_80px_rgba(24,29,38,0.16)]"
+          className="fixed z-50 min-w-40 rounded-[6px] border border-border bg-white p-1 shadow-[0_16px_48px_rgba(24,29,38,0.16)]"
           style={{ left: contextMenu.x, top: contextMenu.y }}
         >
           {contextItems.map((item) => (
             <button
-              className="flex w-full items-center rounded-[10px] px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-surface-soft"
+              className="flex w-full items-center gap-2 rounded-[4px] px-2 py-1 text-left text-xs text-foreground transition-colors hover:bg-surface-soft"
               key={item.label}
               onClick={() => {
                 setContextMenu(null);
@@ -381,6 +455,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               }}
               type="button"
             >
+              {item.icon ? <span className="text-muted">{item.icon}</span> : null}
               {item.label}
             </button>
           ))}

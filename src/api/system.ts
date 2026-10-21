@@ -19,3 +19,7 @@ export async function checkUpdate(): Promise<UpdateInfo> {
 export async function getCacheStats(): Promise<CacheStats> {
   return invokeLogged('get_cache_stats');
 }
+
+export async function getRecentLogs(limit = 500): Promise<string[]> {
+  return invokeLogged('get_recent_logs', { limit });
+}
