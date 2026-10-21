@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Database, LoaderCircle, RefreshCw, TableProperties } from 'lucide-react';
+import { Database, TableProperties } from 'lucide-react';
 import * as topicApi from '@/api/topic';
+import { AutoRefreshControls, RefreshButton } from '@/components/AutoRefresh';
 import { Button } from '@/components/ui/button';
-import { REFRESH_OPTIONS, type RefreshInterval, useAutoRefresh } from '@/hooks/useAutoRefresh';
+import { type RefreshInterval, useAutoRefresh } from '@/hooks/useAutoRefresh';
 import { useTabNavigation } from '@/hooks/useTabNavigation';
 import type { PartitionStatus, TopicStatus as TopicStatusType } from '@/types/topic';
 
@@ -66,42 +67,20 @@ export default function TopicStatus({ connectionId, connectionName, topicName }:
       </div>
 
       <div className="flex flex-wrap items-center gap-3 rounded-[12px] border border-border bg-white px-4 py-3">
-        <Button onClick={() => void refresh()} size="sm" variant="outline">
-          {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-          刷新
-        </Button>
+        <RefreshButton loading={loading} onRefresh={() => void refresh()} />
         <Button onClick={() => openTopicData(connectionId, connectionName, topicName)} size="sm" variant="outline">
           <TableProperties className="h-4 w-4" />
           查看数据
         </Button>
 
-        <div className="ml-auto flex flex-wrap items-center gap-3 text-sm text-body">
-          <label className="inline-flex items-center gap-2">
-            <span>自动刷新</span>
-            <input
-              checked={autoRefreshEnabled}
-              className="h-4 w-4 accent-[color:var(--primary)]"
-              onChange={(event) => setAutoRefreshEnabled(event.target.checked)}
-              type="checkbox"
-            />
-          </label>
-
-          {autoRefreshEnabled ? (
-            <select
-              className="h-9 rounded-[10px] border border-border bg-white px-3 text-sm text-foreground outline-none"
-              onChange={(event) => setRefreshInterval(Number(event.target.value) as RefreshInterval)}
-              value={refreshInterval}
-            >
-              {REFRESH_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          ) : null}
-
-          {lastRefreshed ? <span className="text-muted">上次刷新: {lastRefreshed.toLocaleTimeString()}</span> : null}
-        </div>
+        <AutoRefreshControls
+          className="ml-auto"
+          enabled={autoRefreshEnabled}
+          intervalSecs={refreshInterval}
+          lastRefreshed={lastRefreshed}
+          onEnabledChange={setAutoRefreshEnabled}
+          onIntervalChange={setRefreshInterval}
+        />
       </div>
 
       {initialLoading ? (

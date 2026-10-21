@@ -30,6 +30,53 @@ export type TestConnectionFixture = {
   brokers?: Array<{ id: number; host: string; port: number }>;
 };
 
+export type TopicStatusFixture = {
+  info: {
+    name: string;
+    partitions: number;
+    replication_factor: number;
+    configs: Record<string, string>;
+  };
+  partitions: Array<{
+    partition: number;
+    leader: number;
+    replicas: number[];
+    isr: number[];
+    beginning_offset: number;
+    end_offset: number;
+  }>;
+};
+
+export type KafkaMessageFixture = {
+  topic: string;
+  partition: number;
+  offset: number;
+  key: string | null;
+  value: string | null;
+  headers: Record<string, string>;
+  timestamp: number;
+};
+
+export type ConsumerGroupInfoFixture = {
+  group_id: string;
+  state: string;
+  protocol_type: string;
+  coordinator: number;
+  members: Array<{
+    member_id: string;
+    client_id: string;
+    host: string;
+    assignments: Array<{ topic: string; partitions: number[] }>;
+  }>;
+  offsets: Array<{
+    topic: string;
+    partition: number;
+    current_offset: number;
+    log_end_offset: number;
+    lag: number;
+  }>;
+};
+
 const DEFAULT_TEST_RESULT: TestConnectionFixture = {
   success: true,
   message: '连接成功',

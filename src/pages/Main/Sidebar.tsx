@@ -253,7 +253,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       <div className="flex-1 space-y-3 overflow-auto p-4">
         {connections.length === 0 ? (
           <div className="rounded-[12px] border border-dashed border-border-strong bg-surface-soft px-4 py-5 text-sm leading-6 text-body">
-            暂无连接。下一步会把原来的树形导航和右键菜单迁过来。
+            暂无连接。打开连接管理器创建或选择一条连接后，再回来浏览主题与消费者组。
           </div>
         ) : (
           connections.map((connection) => {
