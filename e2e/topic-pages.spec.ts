@@ -101,6 +101,10 @@ test.describe('主题页面', () => {
     const topicLeaf = page.getByRole('button', { name: 'orders' });
     await expect(topicLeaf).toBeVisible();
 
+    // Group headings keep normal weight; only leaf names are light.
+    await expect(page.getByRole('button', { name: '主题' })).toHaveCSS('font-weight', '400');
+    await expect(page.getByRole('button', { name: '消费者组' })).toHaveCSS('font-weight', '400');
+
     await topicLeaf.click();
 
     await expect(page.getByRole('heading', { name: 'orders' })).toBeVisible();
@@ -190,9 +194,79 @@ test.describe('主题页面', () => {
       })
       .toEqual({ start_from: { type: 'beginning' } });
   });
+
+  test('主题右键菜单提供查询数据、查看属性和未实现项', async ({ page }) => {
+    await page.getByRole('button', { name: '主题' }).click();
+    const topicLeaf = page.getByRole('button', { name: 'orders' });
+
+    await topicLeaf.click({ button: 'right' });
+
+    const queryItem = page.getByRole('button', { name: '查询数据' });
+    await expect(queryItem).toBeVisible();
+    // Verify the compact menu styling is actually applied (14px text, 2px vertical padding).
+    await expect(queryItem).toHaveCSS('font-size', '14px');
+    await expect(queryItem).toHaveCSS('padding-top', '2px');
+    await expect(queryItem).toHaveCSS('padding-bottom', '2px');
+    await expect(page.getByRole('button', { name: '查看属性' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '复制主题名' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /编辑/ })).toContainText('尚未实现');
+    await expect(page.getByRole('button', { name: /删除/ })).toContainText('尚未实现');
+
+    await page.getByRole('button', { name: '查询数据' }).click();
+    await expect(page.getByRole('button', { name: /orders - 数据/ })).toBeVisible();
+  });
+
+  test('主题右键菜单的查看属性会打开状态页', async ({ page }) => {
+    await page.getByRole('button', { name: '主题' }).click();
+    await page.getByRole('button', { name: 'orders' }).click({ button: 'right' });
+
+    await page.getByRole('button', { name: '查看属性' }).click();
+
+    await expect(page.getByRole('button', { name: /orders - 状态/ })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'Leader' })).toBeVisible();
+  });
+
+  test('消息右键菜单可以复制 value 并用原消息创建新消息', async ({ page }) => {
+    await page.getByRole('button', { name: '主题' }).click();
+    await page.getByRole('button', { name: 'orders' }).click();
+    await page.getByRole('button', { name: '查看数据' }).click();
+
+    const firstRow = page.locator('tbody tr').first();
+    await firstRow.click({ button: 'right' });
+
+    await expect(page.getByRole('button', { name: '复制 value' })).toBeVisible();
+    await page.getByRole('button', { name: '再创建一条...' }).click();
+
+    const produceDialog = page.getByRole('dialog');
+    await expect(produceDialog).toBeVisible();
+    await expect(produceDialog.getByLabel('Value')).toHaveValue('{"id":1}');
+    await expect(produceDialog.getByLabel('Key')).toHaveValue('order-1');
+  });
 });
 
 test.describe('消费者组页面', () => {
+  test('消费者组右键菜单提供查询数据、查看属性和未实现项', async ({ page }) => {
+    await page.getByRole('button', { name: '消费者组' }).click();
+    const groupLeaf = page.getByRole('button', { name: 'group-a' });
+
+    await groupLeaf.click({ button: 'right' });
+
+    await expect(page.getByRole('button', { name: '查询数据' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '查看属性' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '复制消费者组名' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /编辑/ })).toContainText('尚未实现');
+    await expect(page.getByRole('button', { name: /删除/ })).toContainText('尚未实现');
+  });
+
+  test('连接右键菜单提供刷新、编辑、复制连接信息与删除连接', async ({ page }) => {
+    await page.getByRole('button', { name: /本地集群/ }).click({ button: 'right' });
+
+    await expect(page.getByRole('button', { name: '刷新' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /编辑/ })).toContainText('尚未实现');
+    await expect(page.getByRole('button', { name: '复制连接信息' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /删除连接/ })).toContainText('尚未实现');
+  });
+
   test('单击消费者组展示成员与 lag 状态', async ({ page }) => {
     await page.getByRole('button', { name: '消费者组' }).click();
     const groupLeaf = page.getByRole('button', { name: 'group-a' });
@@ -210,5 +284,40 @@ test.describe('消费者组页面', () => {
       (call) => call.cmd === 'get_consumer_group_status'
     );
     expect(groupCall?.args).toMatchObject({ connectionId: 'conn-1', groupId: 'group-a' });
+  });
+});
+
+test.describe('应用菜单', () => {
+  test('默认右键菜单被禁用', async ({ page }) => {
+    const defaultPrevented = await page.evaluate(() => {
+      const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+      document.body.dispatchEvent(event);
+      return event.defaultPrevented;
+    });
+
+    expect(defaultPrevented).toBe(true);
+  });
+
+  test('自绘工具栏已被系统菜单替换', async ({ page }) => {
+    await expect(page.getByRole('button', { name: '文件' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '帮助' })).toHaveCount(0);
+    await expect(page.locator('header')).toHaveCount(0);
+  });
+
+  test('前端已订阅系统菜单事件', async ({ page }) => {
+    await expect
+      .poll(async () => {
+        const listenedEvents = (await getInvokeCalls(page))
+          .filter((call) => call.cmd === 'plugin:event|listen')
+          .map((call) => call.args.event);
+        return listenedEvents.filter((event): event is string => typeof event === 'string');
+      })
+      .toEqual(
+        expect.arrayContaining([
+          'menu:manage-connections',
+          'menu:about',
+          'menu:close-project',
+        ])
+      );
   });
 });

@@ -3,6 +3,7 @@ mod commands;
 mod error;
 mod kafka;
 mod logging;
+mod menu;
 mod project;
 
 use cache::message_cache::MessageCache;
@@ -25,6 +26,14 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .setup(|app| {
+            let native_menu = menu::build(app.handle())?;
+            app.set_menu(native_menu)?;
+            Ok(())
+        })
+        .on_menu_event(|app, event| {
+            menu::handle_event(app, event.id().as_ref());
+        })
         .manage(project_manager)
         .manage(kafka_client_manager)
         .manage(message_cache)
@@ -51,6 +60,8 @@ pub fn run() {
             // Logging commands
             commands::logging::log_frontend,
             commands::logging::get_recent_logs,
+            // Developer tools
+            commands::devtools::open_devtools,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

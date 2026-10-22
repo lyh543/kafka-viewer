@@ -1,7 +1,9 @@
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ChevronDown,
   ChevronRight,
+  Copy,
+  CopyPlus,
   Filter,
   Send,
   TableProperties,
@@ -9,6 +11,7 @@ import {
 import { toast } from 'sonner';
 import * as topicApi from '@/api/topic';
 import { AutoRefreshControls, RefreshButton } from '@/components/AutoRefresh';
+import ContextMenu, { type ContextMenuItem } from '@/components/ContextMenu';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -54,7 +57,7 @@ const initialProduceForm = { key: '', value: '', headers: '', partition: '' };
 
 const messageKey = (message: KafkaMessage) => `${message.partition}-${message.offset}`;
 
-export default function TopicData({ connectionId, connectionName, topicName }: TopicDataProps) {
+export default function TopicData({ connectionId, topicName }: TopicDataProps) {
   const [messages, setMessages] = useState<KafkaMessage[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
@@ -65,6 +68,11 @@ export default function TopicData({ connectionId, connectionName, topicName }: T
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
+  const [messageMenu, setMessageMenu] = useState<{
+    message: KafkaMessage;
+    x: number;
+    y: number;
+  } | null>(null);
 
   // Filter state
   const [filter, setFilter] = useState<DataFilter>({
@@ -151,6 +159,72 @@ export default function TopicData({ connectionId, connectionName, topicName }: T
   const pagedMessages = messages.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
 
   const startFromCount = filter.start_from.type === 'last_n' ? filter.start_from.count : 0;
+
+  const copyMessageField = useCallback(async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`${label}已复制`);
+    } catch (error) {
+      notifyError(`复制失败: ${String(error)}`, error, 'topic-data');
+    }
+  }, []);
+
+  const messageMenuItems = useMemo<ContextMenuItem[]>(() => {
+    const message = messageMenu?.message;
+
+    if (!message) {
+      return [];
+    }
+
+    return [
+      {
+        label: '复制',
+        icon: <Copy className="h-3.5 w-3.5" />,
+        onClick: () => {
+          void copyMessageField(
+            JSON.stringify(
+              {
+                topic: message.topic,
+                partition: message.partition,
+                offset: message.offset,
+                timestamp: message.timestamp,
+                key: message.key,
+                value: message.value,
+                headers: message.headers,
+              },
+              null,
+              2
+            ),
+            '消息'
+          );
+        },
+      },
+      {
+        label: '复制 value',
+        icon: <Copy className="h-3.5 w-3.5" />,
+        onClick: () => {
+          void copyMessageField(message.value ?? '', 'value');
+        },
+      },
+      {
+        label: '再创建一条...',
+        icon: <CopyPlus className="h-3.5 w-3.5" />,
+        separatorBefore: true,
+        onClick: () => {
+          setProduceForm({
+            key: message.key ?? '',
+            value: message.value ?? '',
+            headers:
+              message.headers && Object.keys(message.headers).length > 0
+                ? JSON.stringify(message.headers, null, 2)
+                : '',
+            partition: String(message.partition),
+          });
+          setProduceModalOpen(true);
+        },
+      },
+    ];
+  }, [copyMessageField, messageMenu?.message]);
 
   return (
     <section className="space-y-2">
@@ -351,7 +425,13 @@ export default function TopicData({ connectionId, connectionName, topicName }: T
 
                     return (
                       <Fragment key={key}>
-                        <tr className="border-t border-border">
+                        <tr
+                          className="border-t border-border"
+                          onContextMenu={(event) => {
+                            event.preventDefault();
+                            setMessageMenu({ message, x: event.clientX, y: event.clientY });
+                          }}
+                        >
                           <td className="px-1 py-0.5">
                             <button
                               aria-label={isExpanded ? '收起详情' : '展开详情'}
@@ -508,6 +588,12 @@ export default function TopicData({ connectionId, connectionName, topicName }: T
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ContextMenu
+        items={messageMenuItems}
+        onClose={() => setMessageMenu(null)}
+        position={messageMenu ? { x: messageMenu.x, y: messageMenu.y } : null}
+      />
     </section>
   );
 }

@@ -1,12 +1,5 @@
-import { useState } from 'react';
-import { File, HelpCircle } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { useEffect, useRef, useState } from 'react';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import ConnectionModal from '@/pages/ConnectionModal';
 import AboutModal from './AboutModal';
 
@@ -14,56 +7,56 @@ interface MenuBarProps {
   onCloseProject: () => void;
 }
 
-function MenuButton({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex h-5 items-center rounded-[4px] px-1.5 text-[11px] text-foreground transition-colors hover:bg-surface-soft">
-      {children}
-    </div>
-  );
+function isTauriRuntime(): boolean {
+  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 }
 
+/**
+ * Bridges native system menu events (built in Rust) to in-app dialogs.
+ * The menu itself is rendered by the OS, so this component renders no toolbar.
+ */
 export default function MenuBar({ onCloseProject }: MenuBarProps) {
   const [connectionModalOpen, setConnectionModalOpen] = useState(false);
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
+  const closeProjectRef = useRef(onCloseProject);
+
+  useEffect(() => {
+    closeProjectRef.current = onCloseProject;
+  }, [onCloseProject]);
+
+  useEffect(() => {
+    if (!isTauriRuntime()) {
+      return;
+    }
+
+    let disposed = false;
+    const unlistenFns: UnlistenFn[] = [];
+
+    async function register() {
+      const registrations = await Promise.all([
+        listen('menu:manage-connections', () => setConnectionModalOpen(true)),
+        listen('menu:about', () => setAboutModalOpen(true)),
+        listen('menu:close-project', () => closeProjectRef.current()),
+      ]);
+
+      if (disposed) {
+        registrations.forEach((unlisten) => unlisten());
+        return;
+      }
+
+      unlistenFns.push(...registrations);
+    }
+
+    void register();
+
+    return () => {
+      disposed = true;
+      unlistenFns.forEach((unlisten) => unlisten());
+    };
+  }, []);
 
   return (
     <>
-      <div className="flex items-center gap-0.5">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button type="button">
-              <MenuButton>
-                <File className="mr-1 h-3 w-3" />
-                文件
-              </MenuButton>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={() => setConnectionModalOpen(true)}>
-              管理连接
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onCloseProject}>关闭项目</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button type="button">
-              <MenuButton>
-                <HelpCircle className="mr-1 h-3 w-3" />
-                帮助
-              </MenuButton>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem disabled>检查更新</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setAboutModalOpen(true)}>关于</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
       <ConnectionModal onClose={() => setConnectionModalOpen(false)} open={connectionModalOpen} />
       <AboutModal onClose={() => setAboutModalOpen(false)} open={aboutModalOpen} />
     </>

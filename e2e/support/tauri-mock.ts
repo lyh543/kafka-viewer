@@ -131,6 +131,7 @@ export async function installTauriMock(page: Page, options: TauriMockOptions): P
     (mockOptions: MockInitOptions) => {
       const calls: TauriInvokeCall[] = [];
       const callbacks = new Map<number, (payload: unknown) => void>();
+      const listeners = new Map<string, number[]>();
       const connections = [...mockOptions.connections];
       let nextCallbackId = 1;
       let nextEventId = 1;
@@ -213,6 +214,9 @@ export async function installTauriMock(page: Page, options: TauriMockOptions): P
             case 'get_consumer_group_status':
               return mockOptions.consumerGroupStatus;
             case 'plugin:event|listen': {
+              const event = String(args.event);
+              const handler = Number(args.handler);
+              listeners.set(event, [...(listeners.get(event) ?? []), handler]);
               const eventId = nextEventId;
               nextEventId += 1;
               return eventId;
@@ -230,11 +234,21 @@ export async function installTauriMock(page: Page, options: TauriMockOptions): P
 
       const target = window as unknown as {
         __TAURI_INTERNALS__?: typeof internals;
-        __TAURI_E2E__?: { calls: TauriInvokeCall[] };
+        __TAURI_E2E__?: {
+          calls: TauriInvokeCall[];
+          emit: (event: string, payload?: unknown) => void;
+        };
       };
 
       target.__TAURI_INTERNALS__ = internals;
-      target.__TAURI_E2E__ = { calls };
+      target.__TAURI_E2E__ = {
+        calls,
+        emit(event, payload = null) {
+          for (const id of listeners.get(event) ?? []) {
+            callbacks.get(id)?.({ event, id, payload });
+          }
+        },
+      };
     },
     {
       home: options.home,
@@ -259,5 +273,23 @@ export function getInvokeCalls(page: Page): Promise<TauriInvokeCall[]> {
           __TAURI_E2E__: { calls: TauriInvokeCall[] };
         }
       ).__TAURI_E2E__.calls
+  );
+}
+
+/** Emits a Tauri event to listeners registered by the frontend. */
+export async function emitTauriEvent(
+  page: Page,
+  event: string,
+  payload: unknown = null
+): Promise<void> {
+  await page.evaluate(
+    ({ eventName, eventPayload }) => {
+      (
+        window as unknown as {
+          __TAURI_E2E__: { emit: (name: string, data: unknown) => void };
+        }
+      ).__TAURI_E2E__.emit(eventName, eventPayload);
+    },
+    { eventName: event, eventPayload: payload }
   );
 }

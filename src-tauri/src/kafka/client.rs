@@ -28,10 +28,9 @@ impl KafkaClientManager {
         config.set("enable.auto.commit", "false");
         // Keep TCP connection setup short so a dead broker fails quickly.
         config.set("socket.connection.setup.timeout.ms", "3000");
-        // Keep retry storms short: fail fast after at most three attempts.
-        config.set("message.send.max.retries", "3");
-        config.set("retry.backoff.ms", "300");
-        config.set("retry.backoff.max.ms", "2000");
+        // Consumer reconnect backoff (producer retry settings would warn here).
+        config.set("reconnect.backoff.ms", "300");
+        config.set("reconnect.backoff.max.ms", "2000");
 
         match conn.auth.auth_type.as_str() {
             "sasl_plain" => {

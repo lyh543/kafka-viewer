@@ -28,7 +28,6 @@ const lagVariant = (lag: number) => {
 
 export default function ConsumerGroupStatus({
   connectionId,
-  connectionName,
   groupId,
 }: ConsumerGroupStatusProps) {
   const [data, setData] = useState<ConsumerGroupInfo | null>(null);

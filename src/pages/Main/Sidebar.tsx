@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -8,13 +8,16 @@ import {
   FolderTree,
   PanelLeftClose,
   PanelLeftOpen,
+  Pencil,
   RefreshCw,
   TableProperties,
+  Trash2,
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import * as consumerGroupApi from '@/api/consumer-group';
 import * as topicApi from '@/api/topic';
+import ContextMenu, { type ContextMenuItem } from '@/components/ContextMenu';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTabNavigation } from '@/hooks/useTabNavigation';
@@ -25,12 +28,6 @@ interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
 }
-
-type ContextItem = {
-  label: string;
-  onClick: () => void;
-  icon?: React.ReactNode;
-};
 
 function TruncatedLabel({ text, className }: { text: string; className?: string }) {
   return (
@@ -58,21 +55,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     x: number;
     y: number;
   } | null>(null);
-
-  useEffect(() => {
-    if (!contextMenu) {
-      return;
-    }
-
-    const closeMenu = () => setContextMenu(null);
-    window.addEventListener('click', closeMenu);
-    window.addEventListener('contextmenu', closeMenu);
-
-    return () => {
-      window.removeEventListener('click', closeMenu);
-      window.removeEventListener('contextmenu', closeMenu);
-    };
-  }, [contextMenu]);
 
   const copyText = useCallback(async (text: string, label: string) => {
     try {
@@ -164,7 +146,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     );
   };
 
-  const contextItems = useMemo<ContextItem[]>(() => {
+  const contextItems = useMemo<ContextMenuItem[]>(() => {
     if (!contextMenu) {
       return [];
     }
@@ -184,6 +166,11 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           },
         },
         {
+          label: '编辑',
+          icon: <Pencil className="h-3.5 w-3.5" />,
+          unimplemented: true,
+        },
+        {
           label: '复制连接信息',
           icon: <Copy className="h-3.5 w-3.5" />,
           onClick: () => {
@@ -192,13 +179,20 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             }
           },
         },
+        {
+          label: '删除连接',
+          icon: <Trash2 className="h-3.5 w-3.5" />,
+          danger: true,
+          unimplemented: true,
+          separatorBefore: true,
+        },
       ];
     }
 
     if (parts[2] === 'topics') {
       return [
         {
-          label: '刷新主题列表',
+          label: '刷新',
           icon: <RefreshCw className="h-3.5 w-3.5" />,
           onClick: () => {
             void loadTopics(connectionId, true);
@@ -212,14 +206,14 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       return [
         {
-          label: '查看详情',
-          icon: <Eye className="h-3.5 w-3.5" />,
-          onClick: () => openTopicStatus(connectionId, connection?.name ?? '', topicName),
-        },
-        {
-          label: '查看数据',
+          label: '查询数据',
           icon: <TableProperties className="h-3.5 w-3.5" />,
           onClick: () => openTopicData(connectionId, connection?.name ?? '', topicName),
+        },
+        {
+          label: '查看属性',
+          icon: <Eye className="h-3.5 w-3.5" />,
+          onClick: () => openTopicStatus(connectionId, connection?.name ?? '', topicName),
         },
         {
           label: '复制主题名',
@@ -228,13 +222,25 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             void copyText(topicName, '主题名');
           },
         },
+        {
+          label: '编辑',
+          icon: <Pencil className="h-3.5 w-3.5" />,
+          unimplemented: true,
+          separatorBefore: true,
+        },
+        {
+          label: '删除',
+          icon: <Trash2 className="h-3.5 w-3.5" />,
+          danger: true,
+          unimplemented: true,
+        },
       ];
     }
 
     if (parts[2] === 'consumer-groups') {
       return [
         {
-          label: '刷新消费者组列表',
+          label: '刷新',
           icon: <RefreshCw className="h-3.5 w-3.5" />,
           onClick: () => {
             void loadConsumerGroups(connectionId, true);
@@ -248,7 +254,12 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       return [
         {
-          label: '查看详情',
+          label: '查询数据',
+          icon: <Eye className="h-3.5 w-3.5" />,
+          onClick: () => openConsumerGroupStatus(connectionId, connection?.name ?? '', groupId),
+        },
+        {
+          label: '查看属性',
           icon: <Eye className="h-3.5 w-3.5" />,
           onClick: () => openConsumerGroupStatus(connectionId, connection?.name ?? '', groupId),
         },
@@ -258,6 +269,18 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           onClick: () => {
             void copyText(groupId, '消费者组名');
           },
+        },
+        {
+          label: '编辑',
+          icon: <Pencil className="h-3.5 w-3.5" />,
+          unimplemented: true,
+          separatorBefore: true,
+        },
+        {
+          label: '删除',
+          icon: <Trash2 className="h-3.5 w-3.5" />,
+          danger: true,
+          unimplemented: true,
         },
       ];
     }
@@ -282,7 +305,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     onOpenData?: () => void
   ) => (
     <button
-      className="flex w-full items-center gap-1 rounded-[4px] px-1.5 py-0 text-left font-light leading-4 text-foreground transition-colors hover:bg-surface-soft"
+      className="flex w-full items-center gap-1 rounded-[4px] px-1.5 py-[2px] text-left font-light leading-4 text-foreground transition-colors hover:bg-surface-soft"
       key={key}
       onClick={onOpen}
       onContextMenu={(event) => {
@@ -311,7 +334,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-border px-2 py-1.5">
         <div>
-          <p className="text-[16px] uppercase tracking-[0.1em] text-muted">Connections</p>
+          <h2 className="text-[16px] uppercase tracking-[0.1em] text-muted">Connections</h2>
         </div>
         <div className="flex items-center gap-0.5">
           <Button onClick={() => void refreshAllLoaded()} size="icon" variant="ghost">
@@ -363,7 +386,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   <div className="space-y-0.5 px-1.5 pb-1.5">
                     <div className="pl-3">
                       <button
-                        className="flex w-full items-center gap-1 rounded-[4px] px-1.5 py-0 text-left text-[11px] font-extralight leading-4 text-foreground transition-colors hover:bg-surface-soft"
+                        className="flex w-full items-center gap-1 rounded-[4px] px-1.5 py-0 text-left text-[11px] font-normal leading-4 text-foreground transition-colors hover:bg-surface-soft"
                         onClick={() => void toggleExpanded(topicsKey)}
                         onContextMenu={(event) => {
                           event.preventDefault();
@@ -399,7 +422,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
                     <div className="pl-3">
                       <button
-                        className="flex w-full items-center gap-1 rounded-[4px] px-1.5 py-0 text-left text-[11px] font-extralight leading-4 text-foreground transition-colors hover:bg-surface-soft"
+                        className="flex w-full items-center gap-1 rounded-[4px] px-1.5 py-0 text-left text-[11px] font-normal leading-4 text-foreground transition-colors hover:bg-surface-soft"
                         onClick={() => void toggleExpanded(groupsKey)}
                         onContextMenu={(event) => {
                           event.preventDefault();
@@ -440,27 +463,11 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         )}
       </div>
 
-      {contextMenu && contextItems.length > 0 ? (
-        <div
-          className="fixed z-50 min-w-40 rounded-[6px] border border-border bg-white p-1 shadow-[0_16px_48px_rgba(24,29,38,0.16)]"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-        >
-          {contextItems.map((item) => (
-            <button
-              className="flex w-full items-center gap-2 rounded-[4px] px-2 py-1 text-left text-xs text-foreground transition-colors hover:bg-surface-soft"
-              key={item.label}
-              onClick={() => {
-                setContextMenu(null);
-                item.onClick();
-              }}
-              type="button"
-            >
-              {item.icon ? <span className="text-muted">{item.icon}</span> : null}
-              {item.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      <ContextMenu
+        items={contextItems}
+        onClose={() => setContextMenu(null)}
+        position={contextMenu}
+      />
     </div>
   );
 }

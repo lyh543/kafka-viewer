@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
+  emitTauriEvent,
   getInvokeCalls,
   installTauriMock,
   type ConnectionFixture,
@@ -28,8 +29,18 @@ async function openProject(page: Page) {
 }
 
 async function openConnectionManager(page: Page) {
-  await page.getByRole('button', { name: '文件' }).click();
-  await page.getByRole('menuitem', { name: '管理连接' }).click();
+  // Wait until the native-menu bridge has subscribed, then fire the system
+  // menu event that opens the connection manager.
+  await expect
+    .poll(async () => {
+      const calls = await getInvokeCalls(page);
+      return calls.some(
+        (call) => call.cmd === 'plugin:event|listen' && call.args.event === 'menu:manage-connections'
+      );
+    })
+    .toBe(true);
+
+  await emitTauriEvent(page, 'menu:manage-connections');
 
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('button', { name: '新增连接' })).toBeVisible();

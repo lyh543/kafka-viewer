@@ -113,10 +113,6 @@ export default function Main({ onCloseProject }: MainProps) {
   return (
     <TooltipProvider delayDuration={0}>
       <div className="flex h-full flex-col bg-canvas text-foreground">
-        <header className="flex h-8 items-center border-b border-border bg-white px-1.5">
-          <MenuBar onCloseProject={onCloseProject} />
-        </header>
-
         <div className="flex min-h-0 flex-1 overflow-hidden">
           <aside
             className="shrink-0 border-r border-border bg-white"
@@ -145,6 +141,9 @@ export default function Main({ onCloseProject }: MainProps) {
         <footer>
           <StatusBar />
         </footer>
+
+        {/* Native menu bridge: dialogs and menu events only, no toolbar UI. */}
+        <MenuBar onCloseProject={onCloseProject} />
       </div>
     </TooltipProvider>
   );
